@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Estacionamiento Residencial</title>
+  <!-- PWA: manifest instalable en Chrome -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338CA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Estacionamiento II">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client Oficial CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; padding: 0 !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 antialiased flex flex-col">
+
+  <!-- ==================== BARRA DE NAVEGACIÓN SUPERIOR ==================== -->
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-xs no-print">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <!-- Marca -->
+      <div class="flex items-center gap-3 shrink-0 cursor-pointer" onclick="navegarA('reportar')">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          P
+        </div>
+        <div>
+          <h1 id="header-nombre-edificio" class="font-bold text-slate-900 tracking-tight text-base sm:text-lg leading-tight">
+            Residencias Maroa
+          </h1>
+          <p class="text-[10px] text-indigo-600 uppercase tracking-wider font-bold">Estacionamiento II</p>
+        </div>
+      </div>
+
+      <!-- Pestañas de Navegación -->
+      <nav class="flex items-center gap-1 sm:gap-2 bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-semibold">
+        <button id="nav-btn-reportar" onclick="navegarA('reportar')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs transition-colors">
+          Reportar Pago
+        </button>
+        <button id="nav-btn-consultar" onclick="navegarA('consultar')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-colors">
+          Consultar Ficha
+        </button>
+        <button onclick="abrirModalBancos()" class="hidden md:inline-flex px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-colors">
+          Datos Bancarios
+        </button>
+      </nav>
+
+      <!-- Botón de Acceso Admin -->
+      <div class="flex items-center gap-2">
+        <div id="admin-logged-buttons" class="hidden flex items-center gap-2">
+          <button onclick="navegarA('admin')" class="px-3 py-1.5 bg-indigo-600 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 shadow-xs hover:bg-indigo-700">
+            <span>🛡️ Panel Admin</span>
+          </button>
+          <button onclick="cerrarSesionAdmin()" title="Cerrar sesión" class="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors">
+            🚪
+          </button>
+        </div>
+        <div id="admin-login-button">
+          <button onclick="abrirModalPin()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5">
+            <span>🔒 Acceso Junta</span>
+          </button>
+        </div>
+        <!-- Botón de instalación como App (aparece solo en Chrome cuando es instalable) -->
+        <button id="btn-instalar-app" onclick="instalarApp()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-xs transition-colors flex items-center gap-1.5">
+          <span>📥 Instalar App</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== CONTENEDOR PRINCIPAL ==================== -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- ========================================== -->
+    <!-- VISTA 1: FORMULARIO DE REPORTE (RESIDENTE) -->
+    <!-- ========================================== -->
+    <section id="vista-reportar" class="max-w-xl mx-auto space-y-4">
+
+      <!-- Aviso con acceso a cuentas bancarias -->
+      <div class="bg-indigo-50/80 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-indigo-950">
+        <div class="flex items-center gap-2">
+          <span class="text-indigo-600 text-base">ℹ️</span>
+          <span>Cuota mensual: <b id="banner-cuota-monto" class="font-mono">$15.00 USD</b>. ¿Hiciste el Pago Móvil?</span>
+        </div>
+        <button onclick="abrirModalBancos()" class="font-bold text-indigo-700 hover:underline shrink-0">
+          Ver Cuentas
+        </button>
+      </div>
+
+      <!-- Formulario Principal -->
+      <div class="bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200/90">
+        <div class="mb-5">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Registrar Comprobante de Pago</h2>
+          <p class="text-xs text-slate-500 mt-1">
+            Completa los datos de tu Pago Móvil y selecciona los meses que deseas sellar en tu ficha.
+          </p>
+        </div>
+
+        <form id="form-reporte-pago" onsubmit="procesarEnvioPago(event)" class="space-y-4 text-xs">
+
+          <!-- Nombre y Apellido -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1.5">Nombre y Apellido del Propietario / Residente *</label>
+            <input type="text" id="reg-nombre" required placeholder="Ej. Carlos Mendoza" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
+          </div>
+
+          <!-- Apartamento y Puesto (Sin placa) -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">Apartamento *</label>
+              <input type="text" id="reg-apto" required placeholder="Ej. 3-B" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-semibold">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">Nº de Puesto *</label>
+              <input type="text" id="reg-puesto" required placeholder="Ej. 0003" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-semibold">
+            </div>
+          </div>
+
+          <!-- SELECCIÓN DE AÑO Y MESES A SELLAR -->
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                📅 <span>Mes(es) que estás cancelando:</span>
+              </span>
+              <div class="flex gap-1">
+                <button type="button" onclick="cambiarAnoReporte(2023)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2023">2023</button>
+                <button type="button" onclick="cambiarAnoReporte(2024)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2024">2024</button>
+                <button type="button" onclick="cambiarAnoReporte(2025)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold bg-indigo-600 text-white" data-ano="2025">2025</button>
+                <button type="button" onclick="cambiarAnoReporte(2026)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2026">2026</button>
+                <button type="button" onclick="cambiarAnoReporte(2027)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2027">2027</button>
+              </div>
+            </div>
+
+            <!-- Aviso de año pasado sin captura obligatoria -->
+            <div id="alerta-ano-pasado" class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
+              <span>⏳</span>
+              <span><b>Año anterior seleccionado:</b> Los reportes de años pasados pueden guardarse directamente sin adjuntar captura.</span>
+            </div>
+
+            <!-- Selector de 12 Meses -->
+            <div id="grid-meses-reporte" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+              <!-- Renderizado dinámicamente -->
+            </div>
+
+            <p class="text-[11px] text-slate-500">
+              Seleccionados: <b id="conteo-meses-reporte">1 mes</b> (<span id="detalle-monto-calculado">$15.00 USD</span>)
+            </p>
+          </div>
+
+          <!-- Teléfono Pago Móvil y Banco Emisor -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">
+                Teléfono Pago Móvil <span id="label-req-telefono" class="text-slate-400 font-normal">(Opcional)</span>
+              </label>
+              <input type="text" id="reg-telefono" placeholder="Ej. 0412-5551234" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">Banco Emisor</label>
+              <select id="reg-banco" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+                <option value="Banco Banesco">Banco Banesco</option>
+                <option value="Banco Mercantil">Banco Mercantil</option>
+                <option value="Banco de Venezuela">Banco de Venezuela (BDV)</option>
+                <option value="BBVA Provincial">BBVA Provincial</option>
+                <option value="BNC">Banco Nacional de Crédito (BNC)</option>
+                <option value="Bancaribe">Bancaribe</option>
+                <option value="Efectivo / Conserjería">Efectivo / Conserjería</option>
+                <option value="Otro / Zelle">Otro / Zelle</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Monto y Referencia -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">Monto Pagado (USD) *</label>
+              <input type="number" step="0.01" min="0.1" id="reg-monto" required value="15.00" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-sm">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">
+                Nº Referencia <span id="label-req-referencia" class="text-slate-400 font-normal">(Opcional)</span>
+              </label>
+              <input type="text" id="reg-referencia" placeholder="Últimos 6 dígitos" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-sm text-indigo-700">
+            </div>
+          </div>
+
+          <!-- Fecha de Transacción -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1.5">Fecha del Pago *</label>
+            <input type="date" id="reg-fecha" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono text-sm">
+          </div>
+
+          <!-- COMPROBANTE: OBLIGATORIO SOLO ESTE AÑO EN ADELANTE, OPCIONAL EN AÑOS VIEJOS -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="font-semibold text-slate-700">Captura del Pago Móvil o Comprobante</label>
+              <span id="badge-obligatoriedad-foto" class="text-[11px] font-semibold text-emerald-700">
+                ✓ Opcional para años anteriores
+              </span>
+            </div>
+
+            <div id="dropzone-foto" onclick="document.getElementById('input-foto').click()" class="border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50/60 rounded-2xl p-6 text-center cursor-pointer transition-all">
+              <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoArchivo(this)" class="hidden">
+              <div class="space-y-2">
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-xs">
+                  📷
+                </div>
+                <div>
+                  <p id="texto-dropzone-titulo" class="font-bold text-slate-800">Toca para tomar foto o adjuntar captura</p>
+                  <p id="texto-dropzone-desc" class="text-[11px] text-slate-400 mt-0.5">
+                    Se comprime automáticamente para no saturar tu memoria.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Previsualización de Imagen Comprimida -->
+            <div id="preview-foto-box" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              <img id="img-preview" src="" alt="Comprobante" class="max-h-56 mx-auto rounded-xl object-contain shadow-xs border border-slate-200 bg-white">
+              <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
+                <span id="stats-compresion" class="text-emerald-700 font-semibold">✓ Imagen optimizada</span>
+                <button type="button" onclick="quitarFoto()" class="text-slate-500 hover:text-slate-800 font-semibold underline">
+                  Cambiar foto
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Observaciones adicionales -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1.5">Observaciones adicionales (Opcional)</label>
+            <input type="text" id="reg-observaciones" placeholder="Ej. Cuota pendiente regularizada..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Botón de Envío -->
+          <button type="submit" id="btn-submit-reporte" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-xs transition-all text-sm flex items-center justify-center gap-2">
+            <span>Guardar Reporte y Sellar Ficha</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- VISTA 2: CONSULTAR FICHA / TARJETÓN (RESIDENTE) -->
+    <!-- ============================================== -->
+    <section id="vista-consultar" class="hidden max-w-2xl mx-auto space-y-5">
+
+      <!-- Barra de Búsqueda -->
+      <div class="bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200/90 space-y-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Consultar Ficha y Estatus de Pago</h2>
+          <p class="text-xs text-slate-500 mt-1">
+            Busca por tu <b>Nombre</b>, <b>Apartamento</b> o <b>Nº de Puesto</b> para ver tu ficha digital con los meses sellados.
+          </p>
+        </div>
+
+        <div class="relative">
+          <input type="text" id="input-busqueda-residente" oninput="filtrarFichaResidente(this.value)" placeholder="Escribe tu Nombre, Apto (ej. 3-B) o Puesto (ej. 0003)..." class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900">
+          <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 pt-0.5">
+          <span>Sugerencias rápidas:</span>
+          <button onclick="buscarSugerencia('Carlos Mendoza')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Carlos Mendoza</button>
+          <button onclick="buscarSugerencia('0003')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-mono font-medium">Puesto 0003</button>
+          <button onclick="buscarSugerencia('Ana Gómez')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Ana Gómez</button>
+        </div>
+      </div>
+
+      <!-- Contenedor del Tarjetón Físico / Ficha Digital -->
+      <div id="contenedor-tarjeta-ficha" class="space-y-4">
+        <!-- Generado dinámicamente con estilo Kraft idéntico a la imagen -->
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- VISTA 3: PANEL DE ADMINISTRACIÓN              -->
+    <!-- ============================================== -->
+    <section id="vista-admin" class="hidden space-y-6">
+
+      <!-- Barra Superior Admin -->
+      <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-white rounded-2xl border border-slate-200 text-xs shadow-xs">
+        <div class="flex items-center gap-2">
+          <span>💾</span>
+          <span id="badge-estado-servidor" class="font-semibold text-slate-700">Modo Local Activo (Almacenamiento Seguro)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="abrirModalCambiarPin()" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg transition-colors flex items-center gap-1.5">
+            🔑 <span>Cambiar Contraseña</span>
+          </button>
+          <button onclick="abrirModalManual()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors flex items-center gap-1">
+            ➕ <span>Pago Manual</span>
+          </button>
+          <button onclick="exportarCSV()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors">
+            📊 Exportar CSV
+          </button>
+          <button onclick="window.print()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors">
+            🖨️ Imprimir
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Métricas KPI -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+          <span class="text-xs font-medium text-slate-500 block">Total Recaudado (Aprobado)</span>
+          <div id="kpi-total-recaudado" class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-emerald-600">$0.00</div>
+          <p id="kpi-cuotas-aprobadas" class="text-[11px] text-slate-400">0 cuotas conciliadas</p>
+        </div>
+
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+          <span class="text-xs font-medium text-slate-500 block">Pagos Móvil por Confirmar</span>
+          <div id="kpi-pendientes-count" class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-amber-600">0</div>
+          <p id="kpi-pendientes-monto" class="text-[11px] text-slate-400 font-mono">$0.00 por conciliar</p>
+        </div>
+
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+          <span class="text-xs font-medium text-slate-500 block">Puestos Registrados</span>
+          <div id="kpi-puestos-total" class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900">0</div>
+          <p class="text-[11px] text-slate-400">Con historial activo</p>
+        </div>
+
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+          <span class="text-xs font-medium text-slate-500 block">Rechazados / Observados</span>
+          <div id="kpi-rechazados-count" class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-rose-600">0</div>
+          <p class="text-[11px] text-slate-400">Requieren corrección</p>
+        </div>
+      </div>
+
+      <!-- Pestañas Internas del Admin: Conciliación vs Historial de Clientes -->
+      <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button id="tab-btn-conciliacion" onclick="cambiarSubseccionAdmin('conciliacion')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs">
+          💳 Conciliación de Pagos Móvil
+        </button>
+        <button id="tab-btn-clientes" onclick="cambiarSubseccionAdmin('clientes')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900">
+          👥 Historial de Cuotas por Cliente
+        </button>
+      </div>
+
+      <!-- SUBSECCIÓN 1: CONCILIACIÓN DE PAGOS -->
+      <div id="subseccion-conciliacion" class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Revisión de Comprobantes</h3>
+            <p class="text-xs text-slate-500">Confirma el Pago Móvil para estampar el sello oficial en la ficha del residente.</p>
+          </div>
+          <!-- Filtro de Estado -->
+          <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs">
+            <button onclick="filtrarTablaAdmin('todos')" class="filtro-btn px-2.5 py-1 rounded-lg bg-white text-slate-900 font-bold shadow-xs">Todos</button>
+            <button onclick="filtrarTablaAdmin('Pendiente')" class="filtro-btn px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 font-semibold">Pendientes</button>
+            <button onclick="filtrarTablaAdmin('Aprobado')" class="filtro-btn px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 font-semibold">Confirmados</button>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-500 uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-3 px-4">Residente</th>
+                <th class="py-3 px-4">Apto / Puesto</th>
+                <th class="py-3 px-4">Pago Móvil / Banco</th>
+                <th class="py-3 px-4">Referencia</th>
+                <th class="py-3 px-4">Fecha / Meses</th>
+                <th class="py-3 px-4 text-right">Monto</th>
+                <th class="py-3 px-4 text-center">Estado</th>
+                <th class="py-3 px-4 text-center">Comprobante</th>
+                <th class="py-3 px-4 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-pagos-body" class="divide-y divide-slate-100">
+              <!-- Renderizado dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBSECCIÓN 2: HISTORIAL DE CUOTAS POR CLIENTE -->
+      <div id="subseccion-clientes" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Fichas e Historial por Residente</h3>
+            <p class="text-xs text-slate-500">Haz clic en cualquier cliente para inspeccionar su carnet sellado y pagos.</p>
+          </div>
+        </div>
+        <div id="grid-clientes-resumen" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- Renderizado dinámicamente -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ============================================== -->
+  <!-- MODALES DEL SISTEMA                            -->
+  <!-- ============================================== -->
+
+  <!-- MODAL: PIN DE ACCESO ADMIN (123456) -->
+  <div id="modal-pin" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-xl font-bold">
+        🔒
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-900 text-base">Panel de Administración</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Ingresa tu contraseña de acceso</p>
+        <p class="text-[11px] text-slate-400 mt-1 font-mono">(Contraseña por defecto: <b>123456</b>)</p>
+      </div>
+
+      <div class="space-y-3">
+        <input type="password" id="input-pin-acceso" maxlength="6" placeholder="Introduce clave" class="w-full text-center tracking-widest text-lg font-mono py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+        <p id="error-pin-msg" class="hidden text-xs text-rose-600 font-semibold">Contraseña incorrecta.</p>
+
+        <!-- Teclado Numérico Rápido -->
+        <div class="grid grid-cols-3 gap-1.5 pt-1">
+          <button onclick="pulsarTeclaPin('1')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">1</button>
+          <button onclick="pulsarTeclaPin('2')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">2</button>
+          <button onclick="pulsarTeclaPin('3')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">3</button>
+          <button onclick="pulsarTeclaPin('4')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">4</button>
+          <button onclick="pulsarTeclaPin('5')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">5</button>
+          <button onclick="pulsarTeclaPin('6')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">6</button>
+          <button onclick="pulsarTeclaPin('7')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">7</button>
+          <button onclick="pulsarTeclaPin('8')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">8</button>
+          <button onclick="pulsarTeclaPin('9')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">9</button>
+          <button onclick="limpiarPin()" class="py-2 rounded-xl text-xs text-slate-500 hover:bg-slate-100">Borrar</button>
+          <button onclick="pulsarTeclaPin('0')" class="py-2 rounded-xl bg-slate-50 hover:bg-slate-100 font-mono font-bold text-sm">0</button>
+          <button onclick="cerrarModalPin()" class="py-2 rounded-xl text-xs text-slate-500 hover:bg-slate-100">Salir</button>
+        </div>
+
+        <button onclick="validarPin()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors">
+          Entrar al Panel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CAMBIAR CONTRASEÑA ADMIN -->
+  <div id="modal-cambiar-pin" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-slate-900 text-base">Modificar Contraseña</h3>
+        <button onclick="cerrarModalCambiarPin()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <form onsubmit="guardarNuevaContrasena(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Contraseña Actual *</label>
+          <input type="password" id="pin-actual" required placeholder="Ingresa contraseña actual" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nueva Contraseña *</label>
+          <input type="password" id="pin-nuevo" required minlength="4" placeholder="Mínimo 4 caracteres" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Repetir Nueva Contraseña *</label>
+          <input type="password" id="pin-confirmar" required placeholder="Repite la nueva contraseña" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm">
+        </div>
+        <p id="msg-error-cambio-pin" class="hidden text-rose-600 text-xs font-semibold"></p>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="cerrarModalCambiarPin()" class="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+          <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VER COMPROBANTE CON ZOOM Y DETALLES -->
+  <div id="modal-ver-recibo" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] shadow-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row">
+      <div class="flex-1 bg-slate-900 p-4 flex flex-col items-center justify-center overflow-auto min-h-[280px]">
+        <img id="modal-img-recibo" src="" alt="Comprobante" class="max-h-[60vh] max-w-full object-contain rounded-xl shadow-lg border border-white/10">
+      </div>
+      <div class="w-full md:w-72 bg-white p-5 flex flex-col justify-between overflow-y-auto space-y-4 text-xs">
+        <div>
+          <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+            <div>
+              <h4 class="font-bold text-slate-900 text-sm">Detalles del Comprobante</h4>
+              <p id="modal-recibo-id" class="text-[10px] font-mono text-slate-400"></p>
+            </div>
+            <button onclick="cerrarModalRecibo()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+          </div>
+          <div class="space-y-2 mt-3">
+            <p><span class="text-slate-400">Residente:</span> <b id="modal-recibo-nombre" class="text-slate-900"></b></p>
+            <p><span class="text-slate-400">Inmueble:</span> <b id="modal-recibo-apto-puesto" class="text-slate-900"></b></p>
+            <p><span class="text-slate-400">Referencia:</span> <b id="modal-recibo-ref" class="font-mono text-indigo-700"></b></p>
+            <p><span class="text-slate-400">Teléfono:</span> <span id="modal-recibo-tel" class="font-mono"></span></p>
+            <p><span class="text-slate-400">Fecha:</span> <span id="modal-recibo-fecha" class="font-mono"></span></p>
+            <p><span class="text-slate-400">Meses:</span> <span id="modal-recibo-meses" class="font-bold text-indigo-700 font-mono"></span></p>
+            <div class="p-3 bg-slate-900 text-white rounded-xl mt-2">
+              <span class="text-[10px] text-slate-400 block">Monto Reportado</span>
+              <span id="modal-recibo-monto" class="text-lg font-bold font-mono"></span>
+            </div>
+          </div>
+        </div>
+        <div id="modal-recibo-acciones" class="space-y-2 pt-3 border-t border-slate-100">
+          <!-- Botones de aprobación si es admin -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DATOS BANCARIOS -->
+  <div id="modal-bancos" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-slate-900 text-base">Cuentas para Pago Móvil</h3>
+        <button onclick="cerrarModalBancos()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <div class="space-y-2.5">
+        <div class="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100">
+          <span class="text-[10px] uppercase font-bold text-indigo-700 block">Datos Pago Móvil</span>
+          <p class="mt-1 font-semibold text-slate-900">Banco Banesco / Mercantil</p>
+          <p class="font-mono font-bold text-sm text-indigo-800">0414-9876543</p>
+          <p class="text-slate-600">RIF: J-30948210-4</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Cuenta Corriente</span>
+          <p class="font-mono text-xs font-semibold text-slate-800 mt-1 select-all">0134-0982-11-0982736451</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Condominio Residencias Maroa</p>
+        </div>
+      </div>
+      <button onclick="cerrarModalBancos()" class="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR PAGO MANUAL (ADMIN) -->
+  <div id="modal-manual" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-slate-900 text-base">Registrar Cuota o Pago Manual</h3>
+        <button onclick="cerrarModalManual()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <form onsubmit="guardarPagoManual(event)" class="space-y-3">
+        <div>
+          <label class="block font-semibold mb-1">Nombre Residente *</label>
+          <input type="text" id="man-nombre" required placeholder="Ej. Roberto Díaz" class="w-full p-2 bg-slate-50 border rounded-xl">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Apartamento *</label>
+            <input type="text" id="man-apto" required placeholder="Ej. PH-2" class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Nº Puesto *</label>
+            <input type="text" id="man-puesto" required placeholder="Ej. 0033" class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Año de Cuota</label>
+            <select id="man-ano" class="w-full p-2 bg-slate-50 border rounded-xl">
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025" selected>2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Monto ($) *</label>
+            <input type="number" step="0.01" id="man-monto" required value="15.00" class="w-full p-2 bg-slate-50 border rounded-xl font-mono font-bold">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Referencia</label>
+            <input type="text" id="man-ref" placeholder="Opcional en años viejos" class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Fecha</label>
+            <input type="date" id="man-fecha" required class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="cerrarModalManual()" class="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+          <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">Guardar y Sellar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST DE NOTIFICACIÓN FLOTANTE -->
+  <div id="toast-notificacion" class="hidden fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+    <span id="toast-icono">✓</span>
+    <span id="toast-texto">Operación completada</span>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- JAVASCRIPT: LÓGICA COMPLETA DE LA APLICACIÓN   -->
+  <!-- ============================================== -->
+  <script>
+    // Configuración y datos en memoria / localStorage
+    const STORAGE_KEY_PAGOS = 'autopago_estacionamiento_v3';
+    const STORAGE_KEY_PIN = 'autopago_admin_pin_v3';
+    const ANO_ACTUAL = new Date().getFullYear();
+
+    const MESES = [
+      { id: '01', nombre: 'Enero', abrev: 'Ene.' },
+      { id: '02', nombre: 'Febrero', abrev: 'Feb.' },
+      { id: '03', nombre: 'Marzo', abrev: 'Mar.' },
+      { id: '04', nombre: 'Abril', abrev: 'Abr.' },
+      { id: '05', nombre: 'Mayo', abrev: 'May.' },
+      { id: '06', nombre: 'Junio', abrev: 'Jun.' },
+      { id: '07', nombre: 'Julio', abrev: 'Jul.' },
+      { id: '08', nombre: 'Agosto', abrev: 'Ago.' },
+      { id: '09', nombre: 'Septiembre', abrev: 'Sep.' },
+      { id: '10', nombre: 'Octubre', abrev: 'Oct.' },
+      { id: '11', nombre: 'Noviembre', abrev: 'Nov.' },
+      { id: '12', nombre: 'Diciembre', abrev: 'Dic.' }
+    ];
+
+    // Datos iniciales demostrativos (Incluye puesto 0003 Carlos Mendoza como la tarjeta física)
+    const SEED_INICIAL = [
+      {
+        id: 'pago-0003-apr',
+        nombre: 'Carlos E. Mendoza',
+        apartamento: '3-B',
+        puesto: '0003',
+        monto: 135.0,
+        referencia: '782910',
+        fecha_pago: '2025-09-05',
+        ano_cuota: 2025,
+        meses_pagados: ['2025-01','2025-02','2025-03','2025-04','2025-05','2025-06','2025-07','2025-08','2025-09'],
+        telefono_origen: '0412-5551234',
+        banco_origen: 'Banco Mercantil',
+        estado: 'Aprobado',
+        foto_url: generarSvgVoucher('Carlos E. Mendoza', '3-B', '0003', '782910', 135.0)
+      },
+      {
+        id: 'pago-0003-pen',
+        nombre: 'Carlos E. Mendoza',
+        apartamento: '3-B',
+        puesto: '0003',
+        monto: 15.0,
+        referencia: '948201',
+        fecha_pago: '2025-10-18',
+        ano_cuota: 2025,
+        meses_pagados: ['2025-10'],
+        telefono_origen: '0412-5551234',
+        banco_origen: 'Banco Mercantil',
+        estado: 'Pendiente',
+        foto_url: generarSvgVoucher('Carlos E. Mendoza', '3-B', '0003', '948201', 15.0)
+      },
+      {
+        id: 'pago-0018-ana',
+        nombre: 'Ana Gómez Rondón',
+        apartamento: '4-B',
+        puesto: '0018',
+        monto: 75.0,
+        referencia: '849201',
+        fecha_pago: '2025-05-10',
+        ano_cuota: 2025,
+        meses_pagados: ['2025-01','2025-02','2025-03','2025-04','2025-05'],
+        telefono_origen: '0414-2391024',
+        banco_origen: 'Banco Banesco',
+        estado: 'Aprobado',
+        foto_url: generarSvgVoucher('Ana Gómez', '4-B', '0018', '849201', 75.0)
+      }
+    ];
+
+    // Estado en ejecución
+    let listaPagos = [];
+    let adminPin = '123456';
+    let isAdminAutenticado = false;
+    let pestanaActual = 'reportar';
+    let anoSeleccionadoReporte = 2025;
+    let mesesSeleccionadosReporte = ['2025-01'];
+    let fotoDataUrl = null;
+    let pagoEnRevision = null;
+
+    // Inicializar aplicación
+    function iniciarApp() {
+      // Cargar PIN
+      const pinGuardado = localStorage.getItem(STORAGE_KEY_PIN);
+      if (pinGuardado) adminPin = pinGuardado;
+
+      // Cargar Pagos
+      const pagosGuardados = localStorage.getItem(STORAGE_KEY_PAGOS);
+      if (pagosGuardados) {
+        try {
+          listaPagos = JSON.parse(pagosGuardados);
+        } catch (e) {
+          listaPagos = SEED_INICIAL;
+        }
+      } else {
+        listaPagos = SEED_INICIAL;
+        guardarPagosEnStorage();
+      }
+
+      // Establecer fecha de hoy en formulario
+      document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('man-fecha').value = new Date().toISOString().split('T')[0];
+
+      // Renderizar selector de meses
+      renderizarMesesReporte();
+      actualizarReglasAno(anoSeleccionadoReporte);
+
+      // Si había sesión admin activa
+      if (sessionStorage.getItem('admin_session') === 'true') {
+        isAdminAutenticado = true;
+        document.getElementById('admin-logged-buttons').classList.remove('hidden');
+        document.getElementById('admin-login-button').classList.add('hidden');
+      }
+
+      // Navegar a la pestaña por defecto (o la que venga en la URL, ej. ?vista=consultar)
+      let vistaInicial = 'reportar';
+      try {
+        const paramVista = new URLSearchParams(location.search).get('vista');
+        if (['reportar', 'consultar', 'admin'].includes(paramVista)) vistaInicial = paramVista;
+      } catch (e) { /* sin parámetros */ }
+      navegarA(vistaInicial);
+    }
+
+    function guardarPagosEnStorage() {
+      localStorage.setItem(STORAGE_KEY_PAGOS, JSON.stringify(listaPagos));
+    }
+
+    function mostrarToast(mensaje, icono = '✓') {
+      const toast = document.getElementById('toast-notificacion');
+      document.getElementById('toast-icono').textContent = icono;
+      document.getElementById('toast-texto').textContent = mensaje;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    // Navegación entre vistas
+    function navegarA(pestana) {
+      pestanaActual = pestana;
+      ['reportar', 'consultar', 'admin'].forEach(p => {
+        document.getElementById(`vista-${p}`).classList.add('hidden');
+        const navBtn = document.getElementById(`nav-btn-${p}`);
+        if (navBtn) {
+          navBtn.classList.remove('bg-white', 'text-indigo-700', 'shadow-xs');
+          navBtn.classList.add('text-slate-600');
+        }
+      });
+
+      document.getElementById(`vista-${pestana}`).classList.remove('hidden');
+      const activeNavBtn = document.getElementById(`nav-btn-${pestana}`);
+      if (activeNavBtn) {
+        activeNavBtn.classList.add('bg-white', 'text-indigo-700', 'shadow-xs');
+        activeNavBtn.classList.remove('text-slate-600');
+      }
+
+      if (pestana === 'consultar') {
+        const input = document.getElementById('input-busqueda-residente');
+        if (!input.value) input.value = 'Carlos Mendoza';
+        filtrarFichaResidente(input.value);
+      } else if (pestana === 'admin') {
+        if (!isAdminAutenticado) {
+          abrirModalPin();
+          navegarA('reportar');
+          return;
+        }
+        actualizarPanelAdmin();
+      }
+    }
+
+    // Manejo de Años y Meses en el Reporte
+    function cambiarAnoReporte(ano) {
+      anoSeleccionadoReporte = ano;
+      document.querySelectorAll('.btn-ano-reg').forEach(b => {
+        if (parseInt(b.getAttribute('data-ano')) === ano) {
+          b.className = 'btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold bg-indigo-600 text-white shadow-xs';
+        } else {
+          b.className = 'btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white text-slate-700';
+        }
+      });
+
+      mesesSeleccionadosReporte = [`${ano}-01`];
+      renderizarMesesReporte();
+      actualizarReglasAno(ano);
+    }
+
+    function actualizarReglasAno(ano) {
+      const esAnoPasado = ano < ANO_ACTUAL;
+      const alerta = document.getElementById('alerta-ano-pasado');
+      const badgeFoto = document.getElementById('badge-obligatoriedad-foto');
+      const dropzoneTitulo = document.getElementById('texto-dropzone-titulo');
+      const dropzoneDesc = document.getElementById('texto-dropzone-desc');
+      const dropzone = document.getElementById('dropzone-foto');
+
+      if (esAnoPasado) {
+        alerta.classList.remove('hidden');
+        badgeFoto.textContent = '✓ Opcional para años anteriores';
+        badgeFoto.className = 'text-[11px] font-semibold text-emerald-700';
+        dropzoneTitulo.textContent = 'Adjuntar captura (opcional) o dejar vacío';
+        dropzoneDesc.textContent = `Para el año ${ano} puedes guardar el reporte directamente sin foto.`;
+        dropzone.classList.add('border-emerald-300', 'bg-emerald-50/20');
+        dropzone.classList.remove('border-slate-300', 'bg-slate-50/60');
+      } else {
+        alerta.classList.add('hidden');
+        badgeFoto.textContent = '* Obligatorio este año en adelante';
+        badgeFoto.className = 'text-[11px] font-semibold text-rose-600';
+        dropzoneTitulo.textContent = 'Toca para tomar foto o adjuntar captura';
+        dropzoneDesc.textContent = 'Obligatoria para validar tu Pago Móvil de este año.';
+        dropzone.classList.remove('border-emerald-300', 'bg-emerald-50/20');
+        dropzone.classList.add('border-slate-300', 'bg-slate-50/60');
+      }
+    }
+
+    function renderizarMesesReporte() {
+      const grid = document.getElementById('grid-meses-reporte');
+      grid.innerHTML = '';
+      MESES.forEach(m => {
+        const key = `${anoSeleccionadoReporte}-${m.id}`;
+        const isSelected = mesesSeleccionadosReporte.includes(key);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = m.abrev;
+        btn.className = `py-1.5 px-1 rounded-lg text-xs font-semibold transition-all ${
+          isSelected
+            ? 'bg-indigo-600 text-white shadow-xs'
+            : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+        }`;
+        btn.onclick = () => alternarMesReporte(m.id);
+        grid.appendChild(btn);
+      });
+
+      document.getElementById('conteo-meses-reporte').textContent = `${mesesSeleccionadosReporte.length} mes(es)`;
+      const total = (15.0 * mesesSeleccionadosReporte.length).toFixed(2);
+      document.getElementById('detalle-monto-calculado').textContent = `$${total} USD`;
+      document.getElementById('reg-monto').value = total;
+    }
+
+    function alternarMesReporte(monthId) {
+      const key = `${anoSeleccionadoReporte}-${monthId}`;
+      if (mesesSeleccionadosReporte.includes(key)) {
+        if (mesesSeleccionadosReporte.length === 1) return;
+        mesesSeleccionadosReporte = mesesSeleccionadosReporte.filter(m => m !== key);
+      } else {
+        mesesSeleccionadosReporte.push(key);
+        mesesSeleccionadosReporte.sort();
+      }
+      renderizarMesesReporte();
+    }
+
+    // Compresión de fotos en Canvas
+    function procesarFotoArchivo(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          fotoDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          document.getElementById('img-preview').src = fotoDataUrl;
+          document.getElementById('preview-foto-box').classList.remove('hidden');
+          document.getElementById('dropzone-foto').classList.add('hidden');
+          mostrarToast('Foto optimizada para envío rápido', '📷');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function quitarFoto() {
+      fotoDataUrl = null;
+      document.getElementById('input-foto').value = '';
+      document.getElementById('preview-foto-box').classList.add('hidden');
+      document.getElementById('dropzone-foto').classList.remove('hidden');
+    }
+
+    // Enviar Reporte de Pago
+    function procesarEnvioPago(e) {
+      e.preventDefault();
+      const esAnoPasado = anoSeleccionadoReporte < ANO_ACTUAL;
+
+      // Validación estricta: Solo este año en adelante exige captura
+      if (!esAnoPasado && !fotoDataUrl) {
+        alert(`Para pagos del año actual (${ANO_ACTUAL}) en adelante es obligatorio adjuntar la foto o captura del comprobante.`);
+        return;
+      }
+
+      const nombre = document.getElementById('reg-nombre').value.trim();
+      const apto = document.getElementById('reg-apto').value.trim().toUpperCase();
+      const puesto = document.getElementById('reg-puesto').value.trim().toUpperCase();
+      const monto = parseFloat(document.getElementById('reg-monto').value);
+      const referencia = document.getElementById('reg-referencia').value.trim() || `HIST-${Date.now().toString().slice(-6)}`;
+      const fecha = document.getElementById('reg-fecha').value;
+      const telefono = document.getElementById('reg-telefono').value.trim();
+      const banco = document.getElementById('reg-banco').value;
+      const obs = document.getElementById('reg-observaciones').value.trim();
+
+      const nuevoPago = {
+        id: `pago_${Date.now()}`,
+        nombre,
+        apartamento: apto,
+        puesto,
+        monto,
+        referencia,
+        fecha_pago: fecha,
+        ano_cuota: anoSeleccionadoReporte,
+        meses_pagados: [...mesesSeleccionadosReporte],
+        telefono_origen: telefono,
+        banco_origen: banco,
+        observaciones: obs,
+        estado: 'Pendiente',
+        foto_url: fotoDataUrl || generarSvgVoucher(nombre, apto, puesto, referencia, monto, esAnoPasado)
+      };
+
+      listaPagos.unshift(nuevoPago);
+      guardarPagosEnStorage();
+
+      mostrarToast('¡Comprobante recibido con éxito!', '🎉');
+      alert(`¡Gracias ${nombre}! Tu reporte ha sido registrado para el Puesto ${puesto}. La administración confirmará el Pago Móvil.`);
+
+      // Resetear formulario
+      e.target.reset();
+      quitarFoto();
+      mesesSeleccionadosReporte = [`${anoSeleccionadoReporte}-01`];
+      renderizarMesesReporte();
+      navegarA('consultar');
+      buscarSugerencia(nombre);
+    }
+
+    // ==============================================================
+    // GENERADOR DE TARJETÓN ESTILO KRAFT (IDENTICO A IMAGEN ADJUNTA)
+    // ==============================================================
+    function buscarSugerencia(texto) {
+      const input = document.getElementById('input-busqueda-residente');
+      input.value = texto;
+      filtrarFichaResidente(texto);
+    }
+
+    function filtrarFichaResidente(query) {
+      const contenedor = document.getElementById('contenedor-tarjeta-ficha');
+      const q = (query || '').toLowerCase().trim();
+
+      if (!q) {
+        contenedor.innerHTML = `<div class="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">Escribe tu nombre o número de puesto arriba para consultar tu ficha.</div>`;
+        return;
+      }
+
+      // Encontrar todos los pagos que coincidan (búsqueda por palabras: todos los términos deben aparecer)
+      const palabras = q.split(/\s+/).filter(Boolean);
+      const coincidentes = listaPagos.filter(p => {
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        return palabras.every(pal => campos.includes(pal));
+      });
+
+      if (coincidentes.length === 0) {
+        contenedor.innerHTML = `
+          <div class="p-8 text-center bg-white rounded-3xl border border-slate-200 space-y-2">
+            <p class="font-bold text-slate-800">No se encontró ningún registro para "${query}"</p>
+            <p class="text-xs text-slate-500">¿Aún no has registrado tu pago de este mes?</p>
+            <button onclick="navegarA('reportar')" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Reportar Pago Ahora</button>
+          </div>
+        `;
+        return;
+      }
+
+      // Tomar los datos del residente principal encontrado
+      const principal = coincidentes[0];
+      const puestoFormat = principal.puesto.replace(/[^0-9]/g, '').padStart(4, '0') || principal.puesto;
+      const pagosDelPuesto = listaPagos.filter(p => p.puesto.toUpperCase() === principal.puesto.toUpperCase());
+
+      // Mapear meses para el año 2025 (o año del pago)
+      const anoFicha = principal.ano_cuota || 2025;
+      const mapaMeses = {};
+      MESES.forEach(m => mapaMeses[m.id] = { estado: 'por_pagar' });
+
+      pagosDelPuesto.forEach(p => {
+        const meses = p.meses_pagados || [p.fecha_pago ? p.fecha_pago.substring(0, 7) : `${anoFicha}-01`];
+        meses.forEach(mStr => {
+          if (mStr.startsWith(`${anoFicha}-`)) {
+            const mNum = mStr.split('-')[1];
+            if (mapaMeses[mNum]) {
+              if (p.estado === 'Aprobado') {
+                mapaMeses[mNum] = { estado: 'aprobado', pago: p };
+              } else if (p.estado === 'Pendiente' && mapaMeses[mNum].estado !== 'aprobado') {
+                mapaMeses[mNum] = { estado: 'pendiente', pago: p };
+              }
+            }
+          }
+        });
+      });
+
+      const totalAprobados = Object.values(mapaMeses).filter(m => m.estado === 'aprobado').length;
+      const totalPendientes = Object.values(mapaMeses).filter(m => m.estado === 'pendiente').length;
+
+      // Renderizar el Tarjetón tipo Kraft
+      let htmlMeses = '';
+      MESES.forEach(m => {
+        const item = mapaMeses[m.id];
+        let selloHtml = '';
+
+        if (item.estado === 'aprobado') {
+          // SELLO CIRCULAR FISICO: "CANCELADO" con silueta de carro y "EST. II"
+          selloHtml = `
+            <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-white text-[#1a0f07] border-2 border-[#1a0f07] flex flex-col items-center justify-center shadow-xs transform rotate-[-3deg] hover:scale-105 transition-transform cursor-pointer" title="Cuota aprobada - Ver comprobante">
+              <span class="text-[6px] font-black uppercase tracking-tighter leading-none mt-0.5">CANCELADO</span>
+              <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current my-0.5" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+              </svg>
+              <span class="text-[5px] font-bold uppercase tracking-tight text-[#472c18] leading-none mb-0.5">EST. II</span>
+            </div>
+          `;
+        } else if (item.estado === 'pendiente') {
+          // SELLO PENDIENTE DE CONFIRMACIÓN
+          selloHtml = `
+            <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-amber-100 text-amber-900 border-2 border-dashed border-amber-800 flex flex-col items-center justify-center shadow-xs animate-pulse cursor-pointer" title="Pago Móvil pendiente de confirmación">
+              <span class="text-sm">⏳</span>
+              <span class="text-[6px] font-bold uppercase tracking-tight leading-none mt-0.5">PENDIENTE</span>
+            </div>
+          `;
+        } else {
+          // CASILLA POR PAGAR CON SILUETA
+          selloHtml = `
+            <div class="w-12 h-12 rounded-full border border-[#4d3119]/30 flex flex-col items-center justify-center opacity-60">
+              <svg viewBox="0 0 24 24" class="w-5 h-5 fill-[#3b2311]" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+              </svg>
+              <span class="text-[6px] font-semibold uppercase text-[#54341b]">POR PAGAR</span>
+            </div>
+          `;
+        }
+
+        htmlMeses += `
+          <div class="flex items-center justify-between p-1.5 rounded-xl">
+            <span class="font-mono font-bold text-xs text-[#38210f] w-10">${m.abrev}</span>
+            <div>${selloHtml}</div>
+          </div>
+        `;
+      });
+
+      contenedor.innerHTML = `
+        <div class="flex items-center justify-between gap-3 text-xs mb-2 no-print">
+          <span class="font-bold text-slate-700">Ficha oficial generada digitalmente</span>
+          <button onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center gap-1.5">
+            🖨️ <span>Imprimir Ficha</span>
+          </button>
+        </div>
+
+        <!-- TARJETÓN KRAFT -->
+        <div class="relative bg-[#D2B48C] text-[#2c1d11] p-6 sm:p-7 rounded-2xl shadow-lg border-2 border-[#8B5A2B]/40 overflow-hidden font-sans select-none print:m-0 print:border-black"
+          style="background-image: radial-gradient(#c49e75 1px, transparent 1px), radial-gradient(#be976d 1px, #d2b48c 1px); background-size: 24px 24px; background-position: 0 0, 12px 12px;">
+
+          <div class="border-2 border-[#3d2615]/80 p-4 sm:p-5 rounded-xl relative">
+
+            <!-- Encabezado con tipografía del carnet -->
+            <div class="border-b-2 border-[#3d2615]/80 pb-3 mb-4">
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <h2 class="font-extrabold tracking-widest text-base sm:text-lg uppercase text-[#22140a]">
+                    CONTROL DE PAGO ${anoFicha}
+                  </h2>
+                  <p class="text-[11px] font-bold tracking-wider uppercase text-[#422915] mt-0.5">
+                    RESIDENCIAS MAROA - ESTACIONAMIENTO II
+                  </p>
+                </div>
+
+                <!-- Puesto Estampado -->
+                <div class="text-right shrink-0">
+                  <span class="text-[10px] font-black tracking-widest uppercase block text-[#422915]">PUESTO</span>
+                  <span class="font-mono font-black text-2xl sm:text-3xl text-[#1a0e05] tracking-widest inline-block transform -rotate-1 drop-shadow-xs">
+                    ${puestoFormat}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Datos Residente -->
+              <div class="grid grid-cols-2 gap-4 text-xs mt-2 pt-2 border-t border-[#3d2615]/30">
+                <div>
+                  <span class="text-[9px] font-bold text-[#5c3a1e] uppercase block">Residente</span>
+                  <span class="font-bold text-[#1f1207] truncate block text-sm">${principal.nombre}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] font-bold text-[#5c3a1e] uppercase block">Apartamento</span>
+                  <span class="font-bold text-[#1f1207] text-sm">${principal.apartamento}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grilla de 12 Meses -->
+            <div class="grid grid-cols-2 gap-x-6 gap-y-3.5 my-3">
+              ${htmlMeses}
+            </div>
+
+            <!-- Pie del Tarjetón con Silueta de Carro y Solvencia -->
+            <div class="border-t-2 border-[#3d2615]/80 pt-3 mt-2 flex items-center justify-between">
+              <div class="text-xs">
+                <span class="text-[10px] font-black uppercase tracking-wider block text-[#422915]">SOLVENCIA ${anoFicha}</span>
+                <span class="font-bold text-sm text-[#1a0e05]">${totalAprobados} de 12 meses cancelados</span>
+                ${totalPendientes > 0 ? `<span class="text-[11px] font-semibold text-amber-900 block">(${totalPendientes} mes en revisión)</span>` : ''}
+              </div>
+              <!-- Estampa de carro grande a la derecha -->
+              <div class="opacity-80 shrink-0 transform -rotate-3 text-[#1f1207]">
+                <svg viewBox="0 0 24 24" class="w-12 h-12 fill-current" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                  <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+                </svg>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    // ==============================================================
+    // PANEL DE ADMINISTRACIÓN Y CONFIRMACIÓN DE PAGOS
+    // ==============================================================
+    function actualizarPanelAdmin() {
+      const totalRecaudado = listaPagos.filter(p => p.estado === 'Aprobado').reduce((s, p) => s + p.monto, 0);
+      const pendientes = listaPagos.filter(p => p.estado === 'Pendiente');
+      const rechazados = listaPagos.filter(p => p.estado === 'Rechazado');
+      const puestosUnicos = new Set(listaPagos.map(p => p.puesto.toUpperCase())).size;
+
+      document.getElementById('kpi-total-recaudado').textContent = `$${totalRecaudado.toFixed(2)}`;
+      document.getElementById('kpi-cuotas-aprobadas').textContent = `${listaPagos.filter(p => p.estado === 'Aprobado').length} cuotas conciliadas`;
+      document.getElementById('kpi-pendientes-count').textContent = pendientes.length;
+      document.getElementById('kpi-pendientes-monto').textContent = `$${pendientes.reduce((s, p) => s + p.monto, 0).toFixed(2)} por conciliar`;
+      document.getElementById('kpi-puestos-total').textContent = puestosUnicos;
+      document.getElementById('kpi-rechazados-count').textContent = rechazados.length;
+
+      renderizarTablaAdmin(listaPagos);
+      renderizarClientesAdmin();
+    }
+
+    function renderizarTablaAdmin(pagos) {
+      const tbody = document.getElementById('tabla-pagos-body');
+      tbody.innerHTML = '';
+
+      if (pagos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">No hay pagos registrados en esta vista.</td></tr>`;
+        return;
+      }
+
+      pagos.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50 transition-colors ${p.estado === 'Pendiente' ? 'bg-amber-50/20' : ''}`;
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-slate-900">${p.nombre}</td>
+          <td class="py-3 px-4">
+            <span class="font-bold text-slate-800">Apto ${p.apartamento}</span> ·
+            <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${p.puesto}</span>
+          </td>
+          <td class="py-3 px-4 font-mono text-xs">
+            <div>${p.telefono_origen || 'No indicado'}</div>
+            <span class="text-[10px] text-slate-400">${p.banco_origen || 'Pago Móvil'}</span>
+          </td>
+          <td class="py-3 px-4 font-mono font-bold text-indigo-700">${p.referencia}</td>
+          <td class="py-3 px-4 font-mono text-slate-600">
+            <div>${p.fecha_pago}</div>
+            <span class="text-[10px] text-slate-400 font-sans">${(p.meses_pagados || []).length} mes(es)</span>
+          </td>
+          <td class="py-3 px-4 text-right font-mono font-bold text-slate-900">$${p.monto.toFixed(2)}</td>
+          <td class="py-3 px-4 text-center">
+            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+              p.estado === 'Aprobado' ? 'bg-emerald-50 text-emerald-700' :
+              p.estado === 'Rechazado' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
+            }">${p.estado}</span>
+          </td>
+          <td class="py-3 px-4 text-center">
+            <button onclick='abrirModalReciboId("${p.id}")' class="text-indigo-600 hover:underline font-semibold">Ver Recibo</button>
+          </td>
+          <td class="py-3 px-4 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              ${p.estado === 'Pendiente' ? `
+                <button onclick='confirmarPagoMovil("${p.id}")' class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1 shadow-xs">
+                  <span>✓ Confirmar Pago Móvil</span>
+                </button>
+              ` : `
+                <span class="text-emerald-700 font-semibold">Conciliado</span>
+              `}
+              <button onclick='eliminarPago("${p.id}")' class="p-1 text-slate-400 hover:text-rose-600" title="Eliminar">🗑️</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function cambiarSubseccionAdmin(sub) {
+      if (sub === 'conciliacion') {
+        document.getElementById('subseccion-conciliacion').classList.remove('hidden');
+        document.getElementById('subseccion-clientes').classList.add('hidden');
+        document.getElementById('tab-btn-conciliacion').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs';
+        document.getElementById('tab-btn-clientes').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900';
+      } else {
+        document.getElementById('subseccion-conciliacion').classList.add('hidden');
+        document.getElementById('subseccion-clientes').classList.remove('hidden');
+        document.getElementById('tab-btn-conciliacion').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900';
+        document.getElementById('tab-btn-clientes').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs';
+      }
+    }
+
+    function renderizarClientesAdmin() {
+      const grid = document.getElementById('grid-clientes-resumen');
+      grid.innerHTML = '';
+
+      // Agrupar por puesto
+      const puestosMap = {};
+      listaPagos.forEach(p => {
+        const k = `${p.apartamento}_${p.puesto}`;
+        if (!puestosMap[k]) {
+          puestosMap[k] = {
+            nombre: p.nombre,
+            apartamento: p.apartamento,
+            puesto: p.puesto,
+            total: 0,
+            aprobados: 0,
+            pendientes: 0,
+            pagos: []
+          };
+        }
+        puestosMap[k].pagos.push(p);
+        if (p.estado === 'Aprobado') {
+          puestosMap[k].total += p.monto;
+          puestosMap[k].aprobados += (p.meses_pagados || []).length;
+        } else if (p.estado === 'Pendiente') {
+          puestosMap[k].pendientes += (p.meses_pagados || []).length;
+        }
+      });
+
+      Object.values(puestosMap).forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between space-y-4';
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">${c.nombre}</h4>
+                <p class="text-xs text-slate-500">Apto: <b>${c.apartamento}</b></p>
+              </div>
+              <span class="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg border border-indigo-100">P-${c.puesto}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs pt-3 mt-2 border-t border-slate-100">
+              <div>
+                <span class="text-slate-400 block text-[10px]">Meses Sellados</span>
+                <span class="font-bold text-slate-900">${c.aprobados} de 12 meses</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[10px]">Total Aportado</span>
+                <span class="font-mono font-bold text-emerald-600">$${c.total.toFixed(2)}</span>
+              </div>
+            </div>
+            ${c.pendientes > 0 ? `
+              <div class="mt-2 p-2 bg-amber-50 rounded-xl text-amber-900 text-[11px] font-semibold flex items-center justify-between">
+                <span>Pago Móvil por conciliar</span> <span>⏳</span>
+              </div>
+            ` : ''}
+          </div>
+          <button onclick='verFichaCliente("${c.nombre}")' class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors">
+            Ver Ficha Sellada
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function verFichaCliente(nombre) {
+      navegarA('consultar');
+      buscarSugerencia(nombre);
+    }
+
+    function confirmarPagoMovil(id) {
+      const p = listaPagos.find(item => item.id === id);
+      if (p) {
+        p.estado = 'Aprobado';
+        guardarPagosEnStorage();
+        actualizarPanelAdmin();
+        mostrarToast(`✓ Pago Móvil de ${p.nombre} confirmado y sellado`, '✓');
+      }
+    }
+
+    function eliminarPago(id) {
+      if (confirm('¿Estás seguro de eliminar este registro?')) {
+        listaPagos = listaPagos.filter(item => item.id !== id);
+        guardarPagosEnStorage();
+        actualizarPanelAdmin();
+        mostrarToast('Registro eliminado', '🗑️');
+      }
+    }
+
+    function filtrarTablaAdmin(estado) {
+      if (estado === 'todos') {
+        renderizarTablaAdmin(listaPagos);
+      } else {
+        renderizarTablaAdmin(listaPagos.filter(p => p.estado === estado));
+      }
+    }
+
+    // Modal de Recibo
+    function abrirModalReciboId(id) {
+      const p = listaPagos.find(item => item.id === id);
+      if (!p) return;
+      pagoEnRevision = p;
+
+      document.getElementById('modal-img-recibo').src = p.foto_url;
+      document.getElementById('modal-recibo-id').textContent = p.id;
+      document.getElementById('modal-recibo-nombre').textContent = p.nombre;
+      document.getElementById('modal-recibo-apto-puesto').textContent = `Apto ${p.apartamento} · Puesto ${p.puesto}`;
+      document.getElementById('modal-recibo-ref').textContent = p.referencia;
+      document.getElementById('modal-recibo-tel').textContent = p.telefono_origen || 'No indicado';
+      document.getElementById('modal-recibo-fecha').textContent = p.fecha_pago;
+      document.getElementById('modal-recibo-meses').textContent = (p.meses_pagados || []).join(', ');
+      document.getElementById('modal-recibo-monto').textContent = `$${p.monto.toFixed(2)} USD`;
+
+      const acciones = document.getElementById('modal-recibo-acciones');
+      if (isAdminAutenticado && p.estado === 'Pendiente') {
+        acciones.innerHTML = `
+          <button onclick='confirmarPagoMovil("${p.id}"); cerrarModalRecibo();' class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold">
+            ✓ Confirmar Pago Móvil
+          </button>
+        `;
+      } else {
+        acciones.innerHTML = '';
+      }
+
+      document.getElementById('modal-ver-recibo').classList.remove('hidden');
+    }
+
+    function cerrarModalRecibo() {
+      document.getElementById('modal-ver-recibo').classList.add('hidden');
+    }
+
+    // Modal de PIN y Autenticación
+    function abrirModalPin() {
+      document.getElementById('modal-pin').classList.remove('hidden');
+      document.getElementById('input-pin-acceso').value = '';
+      document.getElementById('error-pin-msg').classList.add('hidden');
+    }
+
+    function cerrarModalPin() {
+      document.getElementById('modal-pin').classList.add('hidden');
+    }
+
+    function pulsarTeclaPin(digit) {
+      const input = document.getElementById('input-pin-acceso');
+      if (input.value.length < 6) {
+        input.value += digit;
+      }
+    }
+
+    function limpiarPin() {
+      document.getElementById('input-pin-acceso').value = '';
+    }
+
+    function validarPin() {
+      const pin = document.getElementById('input-pin-acceso').value.trim();
+      if (pin === adminPin) {
+        isAdminAutenticado = true;
+        sessionStorage.setItem('admin_session', 'true');
+        cerrarModalPin();
+        document.getElementById('admin-logged-buttons').classList.remove('hidden');
+        document.getElementById('admin-login-button').classList.add('hidden');
+        mostrarToast('Acceso concedido al panel', '🛡️');
+        navegarA('admin');
+      } else {
+        document.getElementById('error-pin-msg').classList.remove('hidden');
+        document.getElementById('input-pin-acceso').value = '';
+      }
+    }
+
+    function cerrarSesionAdmin() {
+      isAdminAutenticado = false;
+      sessionStorage.removeItem('admin_session');
+      document.getElementById('admin-logged-buttons').classList.add('hidden');
+      document.getElementById('admin-login-button').classList.remove('hidden');
+      mostrarToast('Sesión de administrador cerrada', '🚪');
+      navegarA('reportar');
+    }
+
+    // Modificar Contraseña Admin
+    function abrirModalCambiarPin() {
+      document.getElementById('modal-cambiar-pin').classList.remove('hidden');
+      document.getElementById('pin-actual').value = '';
+      document.getElementById('pin-nuevo').value = '';
+      document.getElementById('pin-confirmar').value = '';
+      document.getElementById('msg-error-cambio-pin').classList.add('hidden');
+    }
+
+    function cerrarModalCambiarPin() {
+      document.getElementById('modal-cambiar-pin').classList.add('hidden');
+    }
+
+    function guardarNuevaContrasena(e) {
+      e.preventDefault();
+      const actual = document.getElementById('pin-actual').value.trim();
+      const nuevo = document.getElementById('pin-nuevo').value.trim();
+      const conf = document.getElementById('pin-confirmar').value.trim();
+      const err = document.getElementById('msg-error-cambio-pin');
+
+      if (actual !== adminPin) {
+        err.textContent = 'La contraseña actual no es correcta.';
+        err.classList.remove('hidden');
+        return;
+      }
+      if (nuevo.length < 4) {
+        err.textContent = 'La nueva clave debe tener al menos 4 caracteres.';
+        err.classList.remove('hidden');
+        return;
+      }
+      if (nuevo !== conf) {
+        err.textContent = 'Las contraseñas no coinciden.';
+        err.classList.remove('hidden');
+        return;
+      }
+
+      adminPin = nuevo;
+      localStorage.setItem(STORAGE_KEY_PIN, nuevo);
+      cerrarModalCambiarPin();
+      mostrarToast('Contraseña de administrador actualizada', '🔑');
+    }
+
+    // Modales de Bancos y Registro Manual
+    function abrirModalBancos() { document.getElementById('modal-bancos').classList.remove('hidden'); }
+    function cerrarModalBancos() { document.getElementById('modal-bancos').classList.add('hidden'); }
+
+    function abrirModalManual() { document.getElementById('modal-manual').classList.remove('hidden'); }
+    function cerrarModalManual() { document.getElementById('modal-manual').classList.add('hidden'); }
+
+    function guardarPagoManual(e) {
+      e.preventDefault();
+      const nombre = document.getElementById('man-nombre').value.trim();
+      const apto = document.getElementById('man-apto').value.trim().toUpperCase();
+      const puesto = document.getElementById('man-puesto').value.trim().toUpperCase();
+      const ano = parseInt(document.getElementById('man-ano').value);
+      const monto = parseFloat(document.getElementById('man-monto').value);
+      const ref = document.getElementById('man-ref').value.trim() || `MAN-${Date.now().toString().slice(-6)}`;
+      const fecha = document.getElementById('man-fecha').value;
+
+      listaPagos.unshift({
+        id: `pago_${Date.now()}`,
+        nombre,
+        apartamento: apto,
+        puesto,
+        monto,
+        referencia: ref,
+        fecha_pago: fecha,
+        ano_cuota: ano,
+        meses_pagados: [`${ano}-01`],
+        estado: 'Aprobado',
+        foto_url: generarSvgVoucher(nombre, apto, puesto, ref, monto, ano < ANO_ACTUAL)
+      });
+
+      guardarPagosEnStorage();
+      cerrarModalManual();
+      actualizarPanelAdmin();
+      mostrarToast(`Pago de ${nombre} guardado y sellado`, '✓');
+    }
+
+    // Exportar CSV
+    function exportarCSV() {
+      const headers = ['ID', 'Fecha', 'Residente', 'Apto', 'Puesto', 'Monto USD', 'Referencia', 'Estado'];
+      const rows = listaPagos.map(p => [
+        p.id, p.fecha_pago, `"${p.nombre}"`, `"${p.apartamento}"`, p.puesto, p.monto.toFixed(2), `"${p.referencia}"`, p.estado
+      ]);
+      const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_Pagos_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Generador de SVG para comprobantes digitales
+    function generarSvgVoucher(nombre, apto, puesto, ref, monto, historico = false) {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420">
+          <rect width="600" height="420" fill="#F8FAFC"/>
+          <rect x="20" y="20" width="560" height="380" rx="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+          <rect x="20" y="20" width="560" height="65" rx="14" fill="${historico ? '#334155' : '#4338CA'}"/>
+          <text x="300" y="58" font-family="Arial" font-size="16" font-weight="bold" fill="#FFFFFF" text-anchor="middle">
+            ${historico ? 'CONSTANCIA HISTÓRICA DE PAGO (AÑO ANTERIOR)' : 'COMPROBANTE ELECTRÓNICO DE PAGO MÓVIL'}
+          </text>
+          <text x="50" y="125" font-family="Arial" font-size="13" fill="#64748B">Residente: <tspan font-weight="bold" fill="#0F172A">${nombre}</tspan></text>
+          <text x="50" y="160" font-family="Arial" font-size="13" fill="#64748B">Inmueble: <tspan font-weight="bold" fill="#0F172A">Apto ${apto} · Puesto ${puesto}</tspan></text>
+          <text x="50" y="195" font-family="Arial" font-size="13" fill="#64748B">Monto: <tspan font-weight="bold" fill="#16A34A">$${monto.toFixed(2)} USD</tspan></text>
+          <text x="50" y="230" font-family="Arial" font-size="13" fill="#64748B">Referencia Bancaria: <tspan font-weight="bold" fill="#4338CA">${ref}</tspan></text>
+          <text x="50" y="265" font-family="Arial" font-size="13" fill="#64748B">Canal: <tspan font-weight="bold" fill="#0F172A">Pago Móvil Interbancario</tspan></text>
+          <rect x="50" y="315" width="500" height="45" rx="8" fill="#F1F5F9"/>
+          <text x="300" y="342" font-family="Arial" font-size="11" fill="#475569" text-anchor="middle">
+            ${historico ? 'Guardado sin captura requerida por pertenecer a año cerrado' : 'Comprobante verificado electrónicamente por la junta de condominio'}
+          </text>
+        </svg>
+      `;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+
+    // ==============================================================
+    // PWA: SERVICIO E INSTALACIÓN COMO APP EN CHROME
+    // ==============================================================
+    // Registrar el Service Worker (solo cuando se sirve por http/https)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log('Service Worker registrado: la app funciona sin conexión.'))
+          .catch(err => console.warn('No se pudo registrar el Service Worker:', err));
+      });
+    }
+
+    // Instalación como app (Chrome / Edge / Android)
+    let deferredPromptInstalacion = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Chrome nos avisa que la app es instalable: mostrar el botón
+      e.preventDefault();
+      deferredPromptInstalacion = e;
+      const btn = document.getElementById('btn-instalar-app');
+      if (btn) btn.classList.remove('hidden');
+    });
+
+    async function instalarApp() {
+      if (!deferredPromptInstalacion) {
+        mostrarToast('Para instalar: menú de Chrome → "Instalar aplicación"', '📥');
+        return;
+      }
+      deferredPromptInstalacion.prompt();
+      const { outcome } = await deferredPromptInstalacion.userChoice;
+      if (outcome === 'accepted') {
+        mostrarToast('¡App instalada! Ya puedes abrirla desde tu escritorio', '🎉');
+      }
+      deferredPromptInstalacion = null;
+      document.getElementById('btn-instalar-app').classList.add('hidden');
+    }
+
+    window.addEventListener('appinstalled', () => {
+      deferredPromptInstalacion = null;
+      document.getElementById('btn-instalar-app').classList.add('hidden');
+      mostrarToast('¡Instalada! Se agregó a tu pantalla de inicio', '✅');
+    });
+
+    // Si ya está instalada (abierta como app), ocultar el botón de instalación
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('btn-instalar-app').classList.add('hidden');
+    }
+
+    // Iniciar al cargar la página
+    window.addEventListener('DOMContentLoaded', iniciarApp);
+  </script>
+</body>
+</html>
