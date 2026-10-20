@@ -1,0 +1,14 @@
+# Sistema
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Dependencias (aquí no se usan, pero por si acaso)
+node_modules/
+
+# Configuración de herramientas
+.vercel/
+.firebase/
+*.log
