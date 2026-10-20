@@ -1,5 +1,5 @@
 /* Service Worker: permite que la app cargue sin conexión y sea instalable en Chrome */
-const CACHE_NAME = 'estacionamiento-maroa-v1';
+const CACHE_NAME = 'estacionamiento-maroa-v4';
 
 const APP_SHELL = [
   './',
@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activar: limpiar caches antiguas
+// Activar: limpiar caches antiguas y tomar el control de inmediato
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -28,24 +28,46 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Estrategia: responder desde cache si existe; si no, ir a red y guardar copia
+// Estrategia:
+//  - Navegación / HTML / manifest → RED PRIMERO (siempre trae la última versión,
+//    y si no hay internet usa la copia guardada). Así las actualizaciones llegan solas.
+//  - Recursos estáticos (iconos) → CACHÉ PRIMERO (rápido y funciona offline).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // No cachear peticiones a otros orígenes (CDNs de Tailwind/Supabase/fuentes)
   const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) {
+
+  // No interceptar otros orígenes (CDNs de Tailwind/Firebase/fuentes)
+  if (url.origin !== self.location.origin) return;
+
+  const esDocumento =
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('index.html') ||
+    url.pathname.endsWith('manifest.json');
+
+  if (esDocumento) {
+    // Red primero, caché como respaldo sin conexión
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match('./index.html')))
     );
     return;
   }
 
+  // Estáticos: caché primero
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        if (response.ok) {
+        if (response && response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }

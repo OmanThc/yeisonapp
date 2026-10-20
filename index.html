@@ -6,11 +6,11 @@
   <title>Control de Estacionamiento Residencial</title>
   <!-- PWA: manifest instalable en Chrome -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4338CA">
+  <meta name="theme-color" content="#4338CA" id="meta-theme-color">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Estacionamiento II">
+  <meta name="apple-mobile-web-app-title" content="Estacionamiento II" id="meta-apple-title">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
@@ -21,6 +21,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS Client Oficial CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Firebase SDK (compat: funciona sin build) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -36,6 +40,38 @@
   <style>
     body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    /* Colores configurables desde el Panel Admin (valores por defecto: índigo) */
+    :root {
+      --color-primario: #4338CA;
+      --color-primario-oscuro: #3730A3;
+      --color-acento: #6366F1;
+      --color-kraft: #D2B48C;
+      --color-on-primario: #FFFFFF;
+    }
+
+    /* Botones principales */
+    .bg-indigo-600 { background-color: var(--color-primario) !important; }
+    .hover\:bg-indigo-700:hover { background-color: var(--color-primario-oscuro) !important; }
+    .bg-indigo-50 { background-color: color-mix(in srgb, var(--color-primario) 10%, white) !important; }
+    .hover\:bg-indigo-100:hover { background-color: color-mix(in srgb, var(--color-primario) 18%, white) !important; }
+    .bg-indigo-50\/80 { background-color: color-mix(in srgb, var(--color-primario) 8%, white) !important; }
+    .bg-indigo-50\/70 { background-color: color-mix(in srgb, var(--color-primario) 7%, white) !important; }
+
+    /* Textos y bordes con el color principal */
+    .text-indigo-700 { color: var(--color-primario-oscuro) !important; }
+    .text-indigo-800 { color: var(--color-primario-oscuro) !important; }
+    .text-indigo-600 { color: var(--color-primario) !important; }
+    .text-indigo-950 { color: color-mix(in srgb, var(--color-primario) 75%, black) !important; }
+    .border-indigo-100 { border-color: color-mix(in srgb, var(--color-primario) 22%, white) !important; }
+    .border-indigo-400 { border-color: var(--color-acento) !important; }
+    .ring-indigo-500:focus { --tw-ring-color: var(--color-primario) !important; }
+    .focus\:ring-indigo-500:focus { --tw-ring-color: var(--color-primario) !important; }
+
+    /* El logo del encabezado usa el color principal y el contraste correcto */
+    #header-logo-letra { color: var(--color-on-primario); }
+    #header-subtitulo { color: var(--color-primario) !important; }
+
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; padding: 0 !important; }
@@ -50,13 +86,13 @@
       <!-- Marca -->
       <div class="flex items-center gap-3 shrink-0 cursor-pointer" onclick="navegarA('reportar')">
         <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-          P
+          <span id="header-logo-letra">P</span>
         </div>
         <div>
           <h1 id="header-nombre-edificio" class="font-bold text-slate-900 tracking-tight text-base sm:text-lg leading-tight">
             Residencias Maroa
           </h1>
-          <p class="text-[10px] text-indigo-600 uppercase tracking-wider font-bold">Estacionamiento II</p>
+          <p id="header-subtitulo" class="text-[10px] text-indigo-600 uppercase tracking-wider font-bold">Estacionamiento II</p>
         </div>
       </div>
 
@@ -175,43 +211,6 @@
             </p>
           </div>
 
-          <!-- Teléfono Pago Móvil y Banco Emisor -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">
-                Teléfono Pago Móvil <span id="label-req-telefono" class="text-slate-400 font-normal">(Opcional)</span>
-              </label>
-              <input type="text" id="reg-telefono" placeholder="Ej. 0412-5551234" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">Banco Emisor</label>
-              <select id="reg-banco" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
-                <option value="Banco Banesco">Banco Banesco</option>
-                <option value="Banco Mercantil">Banco Mercantil</option>
-                <option value="Banco de Venezuela">Banco de Venezuela (BDV)</option>
-                <option value="BBVA Provincial">BBVA Provincial</option>
-                <option value="BNC">Banco Nacional de Crédito (BNC)</option>
-                <option value="Bancaribe">Bancaribe</option>
-                <option value="Efectivo / Conserjería">Efectivo / Conserjería</option>
-                <option value="Otro / Zelle">Otro / Zelle</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Monto y Referencia -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">Monto Pagado (USD) *</label>
-              <input type="number" step="0.01" min="0.1" id="reg-monto" required value="15.00" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-sm">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">
-                Nº Referencia <span id="label-req-referencia" class="text-slate-400 font-normal">(Opcional)</span>
-              </label>
-              <input type="text" id="reg-referencia" placeholder="Últimos 6 dígitos" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-sm text-indigo-700">
-            </div>
-          </div>
-
           <!-- Fecha de Transacción -->
           <div>
             <label class="block font-semibold text-slate-700 mb-1.5">Fecha del Pago *</label>
@@ -228,13 +227,13 @@
             </div>
 
             <div id="dropzone-foto" onclick="document.getElementById('input-foto').click()" class="border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50/60 rounded-2xl p-6 text-center cursor-pointer transition-all">
-              <input type="file" id="input-foto" accept="image/*" capture="environment" onchange="procesarFotoArchivo(this)" class="hidden">
+              <input type="file" id="input-foto" accept="image/*" onchange="procesarFotoArchivo(this)" class="hidden">
               <div class="space-y-2">
                 <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-xs">
                   📷
                 </div>
                 <div>
-                  <p id="texto-dropzone-titulo" class="font-bold text-slate-800">Toca para tomar foto o adjuntar captura</p>
+                  <p id="texto-dropzone-titulo" class="font-bold text-slate-800">Toca para adjuntar captura o tomar foto</p>
                   <p id="texto-dropzone-desc" class="text-[11px] text-slate-400 mt-0.5">
                     Se comprime automáticamente para no saturar tu memoria.
                   </p>
@@ -356,12 +355,15 @@
       </div>
 
       <!-- Pestañas Internas del Admin: Conciliación vs Historial de Clientes -->
-      <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button id="tab-btn-conciliacion" onclick="cambiarSubseccionAdmin('conciliacion')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs">
+      <div class="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+        <button id="tab-btn-conciliacion" onclick="cambiarSubseccionAdmin('conciliacion')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs shrink-0">
           💳 Conciliación de Pagos Móvil
         </button>
-        <button id="tab-btn-clientes" onclick="cambiarSubseccionAdmin('clientes')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900">
+        <button id="tab-btn-clientes" onclick="cambiarSubseccionAdmin('clientes')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0">
           👥 Historial de Cuotas por Cliente
+        </button>
+        <button id="tab-btn-config" onclick="cambiarSubseccionAdmin('config')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0">
+          ⚙️ Configuración de la Página
         </button>
       </div>
 
@@ -387,8 +389,6 @@
               <tr>
                 <th class="py-3 px-4">Residente</th>
                 <th class="py-3 px-4">Apto / Puesto</th>
-                <th class="py-3 px-4">Pago Móvil / Banco</th>
-                <th class="py-3 px-4">Referencia</th>
                 <th class="py-3 px-4">Fecha / Meses</th>
                 <th class="py-3 px-4 text-right">Monto</th>
                 <th class="py-3 px-4 text-center">Estado</th>
@@ -413,6 +413,137 @@
         </div>
         <div id="grid-clientes-resumen" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <!-- Renderizado dinámicamente -->
+        </div>
+      </div>
+
+      <!-- SUBSECCIÓN 3: CONFIGURACIÓN DE LA PÁGINA -->
+      <div id="subseccion-config" class="hidden space-y-4">
+        <!-- Identidad de la página -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🎨 Identidad de la Página</h3>
+            <p class="text-slate-500 mt-0.5">Cambia el nombre de la app y los textos que ven los residentes. Los cambios se aplican al instante en todos los dispositivos.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Nombre del edificio / App *</label>
+              <input type="text" id="cfg-nombre-edificio" oninput="refrescarVistaPreviaConfig()" placeholder="Ej. Residencias Maroa" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Subtítulo (área o zona)</label>
+              <input type="text" id="cfg-subtitulo" oninput="refrescarVistaPreviaConfig()" placeholder="Ej. Estacionamiento II" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Letra del logotipo</label>
+              <input type="text" id="cfg-logo-letra" maxlength="2" oninput="refrescarVistaPreviaConfig()" placeholder="P" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-center">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Cuota mensual (USD) *</label>
+              <input type="number" step="0.01" min="0.01" id="cfg-cuota" oninput="refrescarVistaPreviaConfig()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-mono font-bold">
+            </div>
+          </div>
+        </div>
+
+        <!-- Colores -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🌈 Colores de la Aplicación</h3>
+            <p class="text-slate-500 mt-0.5">Elige el color principal y el de acento. Se actualiza el encabezado, botones y sellos.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color principal</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-color-primario" value="#4338CA" oninput="sincronizarColorHex('primario')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-color-primario-hex" oninput="sincronizarColorTexto('primario')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color de acento</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-color-acento" value="#6366F1" oninput="sincronizarColorHex('acento')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-color-acento-hex" oninput="sincronizarColorTexto('acento')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color del tarjetón</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-color-kraft" value="#D2B48C" oninput="sincronizarColorHex('kraft')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-color-kraft-hex" oninput="sincronizarColorTexto('kraft')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <span class="text-slate-400 font-semibold self-center">Paletas rápidas:</span>
+            <button type="button" onclick="aplicarPaleta('#4338CA','#6366F1','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#4338CA">Índigo</button>
+            <button type="button" onclick="aplicarPaleta('#047857','#10B981','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#047857">Esmeralda</button>
+            <button type="button" onclick="aplicarPaleta('#B91C1C','#EF4444','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#B91C1C">Rubí</button>
+            <button type="button" onclick="aplicarPaleta('#1D4ED8','#3B82F6','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#1D4ED8">Azul</button>
+            <button type="button" onclick="aplicarPaleta('#7C3AED','#A78BFA','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#7C3AED">Violeta</button>
+            <button type="button" onclick="aplicarPaleta('#0F172A','#334155','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#0F172A">Carbón</button>
+          </div>
+          <p class="text-[11px] text-slate-400">Los cambios se ven en la app al pulsar "Guardar Configuración".</p>
+        </div>
+
+        <!-- Vista previa y guardar -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <h3 class="font-bold text-slate-900 text-base">👁️ Vista Previa</h3>
+          <div id="cfg-preview" class="rounded-2xl p-4 border border-slate-200">
+            <div class="flex items-center gap-3">
+              <div id="cfg-preview-logo" class="w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold text-lg">P</div>
+              <div>
+                <p id="cfg-preview-nombre" class="font-bold text-slate-900 leading-tight">Residencias Maroa</p>
+                <p id="cfg-preview-sub" class="text-[10px] uppercase tracking-wider font-bold">Estacionamiento II</p>
+              </div>
+              <div class="ml-auto text-right">
+                <span class="text-[10px] text-slate-400 block">Cuota</span>
+                <span id="cfg-preview-cuota" class="font-mono font-bold text-sm text-slate-900">$15.00</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="guardarConfiguracion()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">💾 Guardar Configuración</button>
+            <button type="button" onclick="restaurarConfiguracion()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">↩️ Restaurar Valores por Defecto</button>
+          </div>
+        </div>
+
+        <!-- Notificaciones -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🔔 Notificaciones de Pagos</h3>
+            <p class="text-slate-500 mt-0.5">Activa los avisos para que este dispositivo te alerte cuando un residente reporte un pago.</p>
+          </div>
+          <div id="cfg-estado-notif" class="p-3.5 rounded-2xl border text-slate-700 bg-slate-50 border-slate-200">
+            Comprobando el estado de las notificaciones…
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="activarNotificaciones()" class="px-4 py-2.5 text-white rounded-xl font-bold" style="background:#047857">🔔 Activar Notificaciones</button>
+            <button type="button" onclick="probarNotificacion()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">🧪 Enviar Notificación de Prueba</button>
+            <button type="button" onclick="desactivarNotificaciones()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-semibold">🔕 Desactivar</button>
+          </div>
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+            <b>Nota técnica:</b> los avisos llegan al instante cuando la app está abierta. Para recibirlos con la app cerrada (segundo plano) hace falta configurar una <b>clave VAPID</b> en Firebase Console (ver README). Sin ella, igual se muestran las alertas internas en el panel.
+          </div>
+        </div>
+
+        <!-- Instalación como App -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">📱 Instalar como App</h3>
+            <p class="text-slate-500 mt-0.5">Convierte esta página en una app del teléfono (icono en la pantalla de inicio).</p>
+          </div>
+          <div id="cfg-estado-instalacion" class="p-3.5 rounded-2xl border text-slate-700 bg-slate-50 border-slate-200">
+            Comprobando si se puede instalar…
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="instalarApp()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">📥 Instalar esta App</button>
+            <button type="button" onclick="diagnosticarInstalacion()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">🔍 Diagnóstico</button>
+          </div>
+          <ul class="text-slate-600 space-y-1 list-disc pl-4">
+            <li><b>Android (Chrome):</b> menú <b>⋮</b> → <b>Instalar aplicación</b>.</li>
+            <li><b>iPhone (Safari):</b> botón <b>Compartir ⬆️</b> → <b>Agregar a pantalla de inicio</b>. (En iPhone, Chrome NO puede instalar).</li>
+            <li>Debe abrirse desde la dirección <b>https</b>; no funciona abriendo el archivo local.</li>
+          </ul>
         </div>
       </div>
 
@@ -509,9 +640,6 @@
           </div>
           <div class="space-y-2 mt-3">
             <p><span class="text-slate-400">Residente:</span> <b id="modal-recibo-nombre" class="text-slate-900"></b></p>
-            <p><span class="text-slate-400">Inmueble:</span> <b id="modal-recibo-apto-puesto" class="text-slate-900"></b></p>
-            <p><span class="text-slate-400">Referencia:</span> <b id="modal-recibo-ref" class="font-mono text-indigo-700"></b></p>
-            <p><span class="text-slate-400">Teléfono:</span> <span id="modal-recibo-tel" class="font-mono"></span></p>
             <p><span class="text-slate-400">Fecha:</span> <span id="modal-recibo-fecha" class="font-mono"></span></p>
             <p><span class="text-slate-400">Meses:</span> <span id="modal-recibo-meses" class="font-bold text-indigo-700 font-mono"></span></p>
             <div class="p-3 bg-slate-900 text-white rounded-xl mt-2">
@@ -591,15 +719,9 @@
             <input type="number" step="0.01" id="man-monto" required value="15.00" class="w-full p-2 bg-slate-50 border rounded-xl font-mono font-bold">
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold mb-1">Referencia</label>
-            <input type="text" id="man-ref" placeholder="Opcional en años viejos" class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
-          </div>
-          <div>
-            <label class="block font-semibold mb-1">Fecha</label>
-            <input type="date" id="man-fecha" required class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
-          </div>
+        <div>
+          <label class="block font-semibold mb-1">Fecha</label>
+          <input type="date" id="man-fecha" required class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
         </div>
         <div class="flex gap-2 pt-2">
           <button type="button" onclick="cerrarModalManual()" class="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">Cancelar</button>
@@ -697,9 +819,124 @@
     let mesesSeleccionadosReporte = ['2025-01'];
     let fotoDataUrl = null;
     let pagoEnRevision = null;
+    let montoCalculadoReporte = 15.0;
+    let estadoFiltroAdmin = 'todos';
+
+    // ==============================================================
+    // SERVIDOR: FIREBASE (Firestore en la nube)
+    // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
+    // Si la nube no está disponible, la app sigue en modo local.
+    // ==============================================================
+    let dbFirebase = null;
+    let nubeDisponible = false;
+    let primeraSyncNubeHecha = false;
+
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCSMsOCU5ETx6YiuvMoYZv0DFIoWhC2GDk",
+      authDomain: "yeison-app-84d5d.firebaseapp.com",
+      projectId: "yeison-app-84d5d",
+      storageBucket: "yeison-app-84d5d.firebasestorage.app",
+      messagingSenderId: "1098979075278",
+      appId: "1:1098979075278:web:3a0c3743e66dd925e0dc9f",
+      measurementId: "G-5GYX1735H6"
+    };
+
+    function initFirebase() {
+      const badge = document.getElementById('badge-estado-servidor');
+      if (typeof firebase === 'undefined') {
+        console.warn('El SDK de Firebase no se cargó. Modo local activo.');
+        if (badge) badge.textContent = '💾 Modo Local (sin conexión a la nube)';
+        return;
+      }
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        dbFirebase = firebase.firestore();
+        // Persistencia offline: si no hay internet, guarda y sincroniza después
+        dbFirebase.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+        nubeDisponible = true;
+        if (badge) badge.textContent = '☁️ Servidor Firebase Conectado';
+      } catch (e) {
+        console.warn('No se pudo iniciar Firebase:', e);
+        if (badge) badge.textContent = '💾 Modo Local (Almacenamiento Seguro)';
+      }
+    }
+
+    // Subir/actualizar un pago a la nube
+    function subirPagoNube(pago) {
+      if (!dbFirebase || !pago || !pago.id) return;
+      dbFirebase.collection('pagos').doc(String(pago.id)).set({ ...pago })
+        .catch(err => console.warn('No se pudo sincronizar un pago con la nube:', err.message));
+    }
+
+    // Borrar un pago de la nube
+    function borrarPagoNube(id) {
+      if (!dbFirebase) return;
+      dbFirebase.collection('pagos').doc(String(id)).delete()
+        .catch(err => console.warn('No se pudo borrar en la nube:', err.message));
+    }
+
+    // Traer todos los pagos desde la nube (null si falla → modo local)
+    async function traerPagosNube() {
+      if (!dbFirebase) return null;
+      try {
+        const snap = await dbFirebase.collection('pagos').get();
+        return snap.docs.map(d => d.data()).filter(p => p && p.id);
+      } catch (e) {
+        console.warn('Firestore no respondió (revisa las reglas de seguridad):', e.message);
+        return null;
+      }
+    }
+
+    // Cargar desde la nube al arrancar: fusiona con lo local (no pierde nada)
+    async function cargarPagosDesdeNube() {
+      if (!dbFirebase) return;
+      const badge = document.getElementById('badge-estado-servidor');
+      const nube = await traerPagosNube();
+
+      if (nube === null) {
+        if (badge) badge.textContent = '⚠️ Nube sin permisos — Modo Local (revisa reglas de Firestore)';
+        return;
+      }
+
+      // Detectar pagos que llegaron de otros dispositivos (para avisar a la junta)
+      const idsConocidos = new Set(listaPagos.map(p => String(p.id)));
+      const nuevosDeOtros = nube.filter(p => !idsConocidos.has(String(p.id)));
+
+      if (nube.length > 0) {
+        const idsNube = new Set(nube.map(p => String(p.id)));
+        const soloLocal = listaPagos.filter(p => !idsNube.has(String(p.id)));
+        listaPagos = [...nube, ...soloLocal]; // la nube manda; lo local no se pierde
+        soloLocal.forEach(p => subirPagoNube(p));
+      } else if (listaPagos.length > 0) {
+        // Primera vez con la nube vacía: migrar todo lo local
+        listaPagos.forEach(p => subirPagoNube(p));
+      }
+      guardarPagosEnStorage();
+      if (badge) badge.textContent = '☁️ Servidor Firebase Conectado';
+      refrescarVistaActual();
+
+      // Avisar de los pagos nuevos (solo si es la junta y ya cargó la primera vez)
+      if (primeraSyncNubeHecha) {
+        nuevosDeOtros.forEach(p => { if (p.estado === 'Pendiente') notificarPagoNuevo(p); });
+      }
+      primeraSyncNubeHecha = true;
+    }
+
+    // Repintar la vista que el usuario tenga abierta
+    function refrescarVistaActual() {
+      if (pestanaActual === 'admin' && isAdminAutenticado) {
+        actualizarPanelAdmin();
+      } else if (pestanaActual === 'consultar') {
+        const input = document.getElementById('input-busqueda-residente');
+        filtrarFichaResidente(input ? input.value : '');
+      }
+    }
 
     // Inicializar aplicación
     function iniciarApp() {
+      // Conectar al servidor (Firebase) antes de cargar datos
+      initFirebase();
+
       // Cargar PIN
       const pinGuardado = localStorage.getItem(STORAGE_KEY_PIN);
       if (pinGuardado) adminPin = pinGuardado;
@@ -716,6 +953,13 @@
         listaPagos = SEED_INICIAL;
         guardarPagosEnStorage();
       }
+
+      // Cargar configuración guardada en este dispositivo
+      const cfgGuardada = localStorage.getItem(STORAGE_KEY_CONFIG);
+      if (cfgGuardada) {
+        try { configuracion = { ...CONFIG_DEFECTO, ...JSON.parse(cfgGuardada) }; } catch (e) { /* usa valores por defecto */ }
+      }
+      aplicarConfiguracion(configuracion);
 
       // Establecer fecha de hoy en formulario
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
@@ -739,10 +983,16 @@
         if (['reportar', 'consultar', 'admin'].includes(paramVista)) vistaInicial = paramVista;
       } catch (e) { /* sin parámetros */ }
       navegarA(vistaInicial);
+
+      // Sincronizar con la nube (Firestore) en segundo plano
+      cargarConfiguracionDesdeNube();
+      cargarPagosDesdeNube();
     }
 
-    function guardarPagosEnStorage() {
+    function guardarPagosEnStorage(pagoModificado) {
       localStorage.setItem(STORAGE_KEY_PAGOS, JSON.stringify(listaPagos));
+      // Si hay pago modificado y nube disponible, subirlo enseguida
+      if (pagoModificado) subirPagoNube(pagoModificado);
     }
 
     function mostrarToast(mensaje, icono = '✓') {
@@ -848,9 +1098,10 @@
       });
 
       document.getElementById('conteo-meses-reporte').textContent = `${mesesSeleccionadosReporte.length} mes(es)`;
-      const total = (15.0 * mesesSeleccionadosReporte.length).toFixed(2);
+      const cuota = Number(configuracion.cuota) || 15.0;
+      const total = (cuota * mesesSeleccionadosReporte.length).toFixed(2);
       document.getElementById('detalle-monto-calculado').textContent = `$${total} USD`;
-      document.getElementById('reg-monto').value = total;
+      montoCalculadoReporte = parseFloat(total);
     }
 
     function alternarMesReporte(monthId) {
@@ -924,11 +1175,8 @@
       const nombre = document.getElementById('reg-nombre').value.trim();
       const apto = document.getElementById('reg-apto').value.trim().toUpperCase();
       const puesto = document.getElementById('reg-puesto').value.trim().toUpperCase();
-      const monto = parseFloat(document.getElementById('reg-monto').value);
-      const referencia = document.getElementById('reg-referencia').value.trim() || `HIST-${Date.now().toString().slice(-6)}`;
+      const monto = montoCalculadoReporte || (Number(configuracion.cuota) || 15.0) * mesesSeleccionadosReporte.length;
       const fecha = document.getElementById('reg-fecha').value;
-      const telefono = document.getElementById('reg-telefono').value.trim();
-      const banco = document.getElementById('reg-banco').value;
       const obs = document.getElementById('reg-observaciones').value.trim();
 
       const nuevoPago = {
@@ -937,19 +1185,19 @@
         apartamento: apto,
         puesto,
         monto,
-        referencia,
+        referencia: `HIST-${Date.now().toString().slice(-6)}`,
         fecha_pago: fecha,
         ano_cuota: anoSeleccionadoReporte,
         meses_pagados: [...mesesSeleccionadosReporte],
-        telefono_origen: telefono,
-        banco_origen: banco,
+        telefono_origen: '',
+        banco_origen: '',
         observaciones: obs,
         estado: 'Pendiente',
-        foto_url: fotoDataUrl || generarSvgVoucher(nombre, apto, puesto, referencia, monto, esAnoPasado)
+        foto_url: fotoDataUrl || generarSvgVoucher(nombre, apto, puesto, 'Reporte sin captura', monto, esAnoPasado)
       };
 
       listaPagos.unshift(nuevoPago);
-      guardarPagosEnStorage();
+      guardarPagosEnStorage(nuevoPago);
 
       mostrarToast('¡Comprobante recibido con éxito!', '🎉');
       alert(`¡Gracias ${nombre}! Tu reporte ha sido registrado para el Puesto ${puesto}. La administración confirmará el Pago Móvil.`);
@@ -1165,7 +1413,7 @@
       document.getElementById('kpi-puestos-total').textContent = puestosUnicos;
       document.getElementById('kpi-rechazados-count').textContent = rechazados.length;
 
-      renderizarTablaAdmin(listaPagos);
+      renderizarTablaAdmin(estadoFiltroAdmin === 'todos' ? listaPagos : listaPagos.filter(p => p.estado === estadoFiltroAdmin));
       renderizarClientesAdmin();
     }
 
@@ -1174,7 +1422,7 @@
       tbody.innerHTML = '';
 
       if (pagos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">No hay pagos registrados en esta vista.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">No hay pagos registrados en esta vista.</td></tr>`;
         return;
       }
 
@@ -1188,11 +1436,6 @@
             <span class="font-bold text-slate-800">Apto ${p.apartamento}</span> ·
             <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${p.puesto}</span>
           </td>
-          <td class="py-3 px-4 font-mono text-xs">
-            <div>${p.telefono_origen || 'No indicado'}</div>
-            <span class="text-[10px] text-slate-400">${p.banco_origen || 'Pago Móvil'}</span>
-          </td>
-          <td class="py-3 px-4 font-mono font-bold text-indigo-700">${p.referencia}</td>
           <td class="py-3 px-4 font-mono text-slate-600">
             <div>${p.fecha_pago}</div>
             <span class="text-[10px] text-slate-400 font-sans">${(p.meses_pagados || []).length} mes(es)</span>
@@ -1225,17 +1468,28 @@
     }
 
     function cambiarSubseccionAdmin(sub) {
-      if (sub === 'conciliacion') {
-        document.getElementById('subseccion-conciliacion').classList.remove('hidden');
-        document.getElementById('subseccion-clientes').classList.add('hidden');
-        document.getElementById('tab-btn-conciliacion').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs';
-        document.getElementById('tab-btn-clientes').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900';
-      } else {
-        document.getElementById('subseccion-conciliacion').classList.add('hidden');
-        document.getElementById('subseccion-clientes').classList.remove('hidden');
-        document.getElementById('tab-btn-conciliacion').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900';
-        document.getElementById('tab-btn-clientes').className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs';
-      }
+      const _setTab = (id, activo) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = activo
+          ? 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs shrink-0'
+          : 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0';
+      };
+      const _setPanel = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !visible);
+      };
+
+      _setPanel('subseccion-conciliacion', sub === 'conciliacion');
+      _setPanel('subseccion-clientes', sub === 'clientes');
+      _setPanel('subseccion-config', sub === 'config');
+      _setTab('tab-btn-conciliacion', sub === 'conciliacion');
+      _setTab('tab-btn-clientes', sub === 'clientes');
+      _setTab('tab-btn-config', sub === 'config');
+
+      if (sub === 'config') cargarFormularioConfiguracion();
+      if (sub === 'conciliacion') renderizarTablaAdmin(estadoFiltroAdmin === 'todos' ? listaPagos : listaPagos.filter(p => p.estado === estadoFiltroAdmin));
+      if (sub === 'clientes') renderizarClientesAdmin();
     }
 
     function renderizarClientesAdmin() {
@@ -1311,7 +1565,7 @@
       const p = listaPagos.find(item => item.id === id);
       if (p) {
         p.estado = 'Aprobado';
-        guardarPagosEnStorage();
+        guardarPagosEnStorage(p);
         actualizarPanelAdmin();
         mostrarToast(`✓ Pago Móvil de ${p.nombre} confirmado y sellado`, '✓');
       }
@@ -1321,12 +1575,21 @@
       if (confirm('¿Estás seguro de eliminar este registro?')) {
         listaPagos = listaPagos.filter(item => item.id !== id);
         guardarPagosEnStorage();
+        borrarPagoNube(id);
         actualizarPanelAdmin();
         mostrarToast('Registro eliminado', '🗑️');
       }
     }
 
     function filtrarTablaAdmin(estado) {
+      estadoFiltroAdmin = estado;
+      // Resaltar el botón activo
+      document.querySelectorAll('.filtro-btn').forEach(b => {
+        const activo = b.getAttribute('onclick') === `filtrarTablaAdmin('${estado}')`;
+        b.className = activo
+          ? 'filtro-btn px-2.5 py-1 rounded-lg bg-white text-slate-900 font-bold shadow-xs'
+          : 'filtro-btn px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 font-semibold';
+      });
       if (estado === 'todos') {
         renderizarTablaAdmin(listaPagos);
       } else {
@@ -1342,10 +1605,7 @@
 
       document.getElementById('modal-img-recibo').src = p.foto_url;
       document.getElementById('modal-recibo-id').textContent = p.id;
-      document.getElementById('modal-recibo-nombre').textContent = p.nombre;
-      document.getElementById('modal-recibo-apto-puesto').textContent = `Apto ${p.apartamento} · Puesto ${p.puesto}`;
-      document.getElementById('modal-recibo-ref').textContent = p.referencia;
-      document.getElementById('modal-recibo-tel').textContent = p.telefono_origen || 'No indicado';
+      document.getElementById('modal-recibo-nombre').textContent = `${p.nombre} — Apto ${p.apartamento} · Puesto ${p.puesto}`;
       document.getElementById('modal-recibo-fecha').textContent = p.fecha_pago;
       document.getElementById('modal-recibo-meses').textContent = (p.meses_pagados || []).join(', ');
       document.getElementById('modal-recibo-monto').textContent = `$${p.monto.toFixed(2)} USD`;
@@ -1471,24 +1731,24 @@
       const puesto = document.getElementById('man-puesto').value.trim().toUpperCase();
       const ano = parseInt(document.getElementById('man-ano').value);
       const monto = parseFloat(document.getElementById('man-monto').value);
-      const ref = document.getElementById('man-ref').value.trim() || `MAN-${Date.now().toString().slice(-6)}`;
       const fecha = document.getElementById('man-fecha').value;
 
-      listaPagos.unshift({
+      const nuevoPago = {
         id: `pago_${Date.now()}`,
         nombre,
         apartamento: apto,
         puesto,
         monto,
-        referencia: ref,
+        referencia: `MAN-${Date.now().toString().slice(-6)}`,
         fecha_pago: fecha,
         ano_cuota: ano,
         meses_pagados: [`${ano}-01`],
         estado: 'Aprobado',
-        foto_url: generarSvgVoucher(nombre, apto, puesto, ref, monto, ano < ANO_ACTUAL)
-      });
+        foto_url: generarSvgVoucher(nombre, apto, puesto, 'Registro manual de la junta', monto, ano < ANO_ACTUAL)
+      };
 
-      guardarPagosEnStorage();
+      listaPagos.unshift(nuevoPago);
+      guardarPagosEnStorage(nuevoPago);
       cerrarModalManual();
       actualizarPanelAdmin();
       mostrarToast(`Pago de ${nombre} guardado y sellado`, '✓');
@@ -1496,9 +1756,9 @@
 
     // Exportar CSV
     function exportarCSV() {
-      const headers = ['ID', 'Fecha', 'Residente', 'Apto', 'Puesto', 'Monto USD', 'Referencia', 'Estado'];
+      const headers = ['ID', 'Fecha', 'Residente', 'Apto', 'Puesto', 'Monto USD', 'Meses', 'Estado'];
       const rows = listaPagos.map(p => [
-        p.id, p.fecha_pago, `"${p.nombre}"`, `"${p.apartamento}"`, p.puesto, p.monto.toFixed(2), `"${p.referencia}"`, p.estado
+        p.id, p.fecha_pago, `"${p.nombre}"`, `"${p.apartamento}"`, p.puesto, p.monto.toFixed(2), `"${(p.meses_pagados || []).join(' ')}"`, p.estado
       ]);
       const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1536,51 +1796,471 @@
     }
 
     // ==============================================================
-    // PWA: SERVICIO E INSTALACIÓN COMO APP EN CHROME
+    // CONFIGURACIÓN DE LA PÁGINA (nombre, colores, cuota)
+    // Se guarda en Firestore para que aplique a todos los dispositivos.
     // ==============================================================
-    // Registrar el Service Worker (solo cuando se sirve por http/https)
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(() => console.log('Service Worker registrado: la app funciona sin conexión.'))
-          .catch(err => console.warn('No se pudo registrar el Service Worker:', err));
-      });
+    const STORAGE_KEY_CONFIG = 'autopago_config_v1';
+    const CONFIG_DEFECTO = {
+      nombreEdificio: 'Residencias Maroa',
+      subtitulo: 'Estacionamiento II',
+      logoLetra: 'P',
+      cuota: 15.0,
+      colorPrimario: '#4338CA',
+      colorAcento: '#6366F1',
+      colorKraft: '#D2B48C'
+    };
+    let configuracion = { ...CONFIG_DEFECTO };
+
+    // Versión oscura de un color (para bordes y hover)
+    function oscurecer(hex, factor = 0.82) {
+      let c = String(hex).replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const n = parseInt(c, 16);
+      if (isNaN(n)) return hex;
+      const r = Math.round(((n >> 16) & 255) * factor);
+      const g = Math.round(((n >> 8) & 255) * factor);
+      const b = Math.round((n & 255) * factor);
+      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
 
-    // Instalación como app (Chrome / Edge / Android)
+    // Texto legible (blanco o negro) sobre un color de fondo
+    function contraste(hex) {
+      let c = String(hex).replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const n = parseInt(c, 16);
+      if (isNaN(n)) return '#FFFFFF';
+      const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return lum > 0.62 ? '#1a0e05' : '#FFFFFF';
+    }
+
+    function aplicarConfiguracion(cfg) {
+      configuracion = { ...CONFIG_DEFECTO, ...(cfg || {}) };
+      const raiz = document.documentElement;
+      raiz.style.setProperty('--color-primario', configuracion.colorPrimario);
+      raiz.style.setProperty('--color-primario-oscuro', oscurecer(configuracion.colorPrimario));
+      raiz.style.setProperty('--color-acento', configuracion.colorAcento);
+      raiz.style.setProperty('--color-kraft', configuracion.colorKraft);
+      raiz.style.setProperty('--color-on-primario', contraste(configuracion.colorPrimario));
+
+      document.title = `${configuracion.nombreEdificio} — Control de Estacionamiento`;
+      const nombreEl = document.getElementById('header-nombre-edificio');
+      if (nombreEl) nombreEl.textContent = configuracion.nombreEdificio;
+      const subEl = document.getElementById('header-subtitulo');
+      if (subEl) subEl.textContent = configuracion.subtitulo;
+      const logoEl = document.getElementById('header-logo-letra');
+      if (logoEl) logoEl.textContent = configuracion.logoLetra || 'P';
+      const cuotaEl = document.getElementById('banner-cuota-monto');
+      if (cuotaEl) cuotaEl.textContent = `$${Number(configuracion.cuota).toFixed(2)} USD`;
+
+      const meta = document.getElementById('meta-theme-color');
+      if (meta) meta.setAttribute('content', configuracion.colorPrimario);
+      const metaApple = document.getElementById('meta-apple-title');
+      if (metaApple) metaApple.setAttribute('content', configuracion.nombreEdificio);
+
+      // El monto depende de la cuota configurada
+      renderizarMesesReporte();
+    }
+
+    function cargarFormularioConfiguracion() {
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+      set('cfg-nombre-edificio', configuracion.nombreEdificio);
+      set('cfg-subtitulo', configuracion.subtitulo);
+      set('cfg-logo-letra', configuracion.logoLetra);
+      set('cfg-cuota', configuracion.cuota);
+      set('cfg-color-primario', configuracion.colorPrimario);
+      set('cfg-color-primario-hex', configuracion.colorPrimario);
+      set('cfg-color-acento', configuracion.colorAcento);
+      set('cfg-color-acento-hex', configuracion.colorAcento);
+      set('cfg-color-kraft', configuracion.colorKraft);
+      set('cfg-color-kraft-hex', configuracion.colorKraft);
+      refrescarVistaPreviaConfig();
+      actualizarEstadoNotificaciones();
+      actualizarEstadoInstalacion();
+    }
+
+    // Muestra si la app ya está instalada o si el navegador permite instalarla
+    function actualizarEstadoInstalacion() {
+      const box = document.getElementById('cfg-estado-instalacion');
+      if (!box) return;
+      if (yaEstaInstalada()) {
+        box.className = 'p-3.5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900';
+        box.innerHTML = '✅ Esta app <b>ya está instalada</b> en este dispositivo.';
+        return;
+      }
+      if (!location.protocol.startsWith('http')) {
+        box.className = 'p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900';
+        box.innerHTML = '⚠️ La página se abrió como archivo local. Para instalar hay que abrirla desde su dirección web (https).';
+        return;
+      }
+      const ent = entornoInstalacion();
+      if (ent.ios && !ent.safari) {
+        box.className = 'p-3.5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900';
+        box.innerHTML = 'ℹ️ En iPhone/iPad, abre esta dirección en <b>Safari</b> para poder instalarla (Chrome en iOS no permite).';
+        return;
+      }
+      if (deferredPromptInstalacion) {
+        box.className = 'p-3.5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900';
+        box.innerHTML = '✅ El navegador permite instalar la app. Pulsa <b>"Instalar esta App"</b>.';
+      } else {
+        box.className = 'p-3.5 rounded-2xl border bg-slate-50 border-slate-200 text-slate-700';
+        box.innerHTML = '📱 Abre el menú del navegador y elige <b>"Instalar aplicación"</b> (o "Agregar a pantalla de inicio"). Si no aparece, pulsa <b>Diagnóstico</b>.';
+      }
+    }
+
+    function refrescarVistaPreviaConfig() {
+      const cp = document.getElementById('cfg-color-primario')?.value || CONFIG_DEFECTO.colorPrimario;
+      const ck = document.getElementById('cfg-color-kraft')?.value || CONFIG_DEFECTO.colorKraft;
+      const nombre = document.getElementById('cfg-nombre-edificio');
+      const sub = document.getElementById('cfg-subtitulo');
+      const cuota = document.getElementById('cfg-cuota');
+
+      const logo = document.getElementById('cfg-preview-logo');
+      const nom = document.getElementById('cfg-preview-nombre');
+      const s = document.getElementById('cfg-preview-sub');
+      const cu = document.getElementById('cfg-preview-cuota');
+      const box = document.getElementById('cfg-preview');
+
+      if (logo) {
+        logo.style.background = cp;
+        logo.style.color = contraste(cp);
+        logo.textContent = (document.getElementById('cfg-logo-letra')?.value || 'P').toUpperCase().slice(0, 2);
+      }
+      if (nom && nombre) nom.textContent = nombre.value || CONFIG_DEFECTO.nombreEdificio;
+      if (s && sub) { s.textContent = sub.value || CONFIG_DEFECTO.subtitulo; s.style.color = cp; }
+      if (cu && cuota) cu.textContent = `$${(parseFloat(cuota.value) || 0).toFixed(2)}`;
+      if (box) box.style.background = ck + '33';
+    }
+
+    // Sincroniza el selector de color con su campo de texto (y viceversa)
+    function sincronizarColorHex(tipo) {
+      const color = document.getElementById('cfg-color-' + tipo);
+      const hex = document.getElementById('cfg-color-' + tipo + '-hex');
+      if (color && hex) hex.value = color.value.toUpperCase();
+      refrescarVistaPreviaConfig();
+    }
+
+    function sincronizarColorTexto(tipo) {
+      const color = document.getElementById('cfg-color-' + tipo);
+      const hex = document.getElementById('cfg-color-' + tipo + '-hex');
+      if (!hex) return;
+      let v = hex.value.trim();
+      if (v && !v.startsWith('#')) v = '#' + v;
+      if (/^#[0-9a-fA-F]{6}$/.test(v) && color) color.value = v.toLowerCase();
+      refrescarVistaPreviaConfig();
+    }
+
+    function aplicarPaleta(primario, acento, kraft) {
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+      set('cfg-color-primario', primario); set('cfg-color-primario-hex', primario);
+      set('cfg-color-acento', acento); set('cfg-color-acento-hex', acento);
+      set('cfg-color-kraft', kraft); set('cfg-color-kraft-hex', kraft);
+      refrescarVistaPreviaConfig();
+    }
+
+    function guardarConfiguracion() {
+      const val = (id, alt) => { const el = document.getElementById(id); return el && el.value !== '' ? el.value : alt; };
+      const cfg = {
+        nombreEdificio: val('cfg-nombre-edificio', CONFIG_DEFECTO.nombreEdificio).trim(),
+        subtitulo: val('cfg-subtitulo', CONFIG_DEFECTO.subtitulo).trim(),
+        logoLetra: (val('cfg-logo-letra', 'P').trim() || 'P').toUpperCase().slice(0, 2),
+        cuota: Math.max(0.01, parseFloat(val('cfg-cuota', CONFIG_DEFECTO.cuota)) || CONFIG_DEFECTO.cuota),
+        colorPrimario: val('cfg-color-primario', CONFIG_DEFECTO.colorPrimario),
+        colorAcento: val('cfg-color-acento', CONFIG_DEFECTO.colorAcento),
+        colorKraft: val('cfg-color-kraft', CONFIG_DEFECTO.colorKraft)
+      };
+
+      aplicarConfiguracion(cfg);
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+
+      if (dbFirebase) {
+        dbFirebase.collection('configuracion').doc('general').set(configuracion)
+          .then(() => mostrarToast('Configuración guardada y publicada', '🎨'))
+          .catch(() => mostrarToast('Guardado solo en este dispositivo', '⚠️'));
+      } else {
+        mostrarToast('Configuración guardada en este dispositivo', '🎨');
+      }
+    }
+
+    function restaurarConfiguracion() {
+      if (!confirm('¿Restaurar el nombre y los colores por defecto?')) return;
+      aplicarConfiguracion({ ...CONFIG_DEFECTO });
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+      if (dbFirebase) dbFirebase.collection('configuracion').doc('general').set(configuracion).catch(() => {});
+      cargarFormularioConfiguracion();
+      mostrarToast('Valores por defecto restaurados', '↩️');
+    }
+
+    async function cargarConfiguracionDesdeNube() {
+      if (!dbFirebase) return;
+      try {
+        const doc = await dbFirebase.collection('configuracion').doc('general').get();
+        if (doc.exists) {
+          aplicarConfiguracion(doc.data());
+          localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+        }
+      } catch (e) {
+        console.warn('No se pudo leer la configuración de la nube:', e.message);
+      }
+    }
+
+    // ==============================================================
+    // NOTIFICACIONES: avisan a la junta cuando un residente paga
+    // ==============================================================
+    const STORAGE_KEY_TOKEN_NOTIF = 'autopago_notif_token_v1';
+    const VAPID_PUBLIC_KEY = ''; // Opcional: pegar la clave VAPID de Firebase para avisos con la app cerrada
+    let messagingFirebase = null;
+    let tokenNotificaciones = null;
+
+    function notificacionesSoportadas() {
+      return typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
+    }
+
+    function actualizarEstadoNotificaciones() {
+      const box = document.getElementById('cfg-estado-notif');
+      if (!box) return;
+      if (!notificacionesSoportadas()) {
+        box.className = 'p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900';
+        box.innerHTML = '⚠️ Este navegador no permite notificaciones.';
+        return;
+      }
+      const permiso = Notification.permission;
+      const activo = localStorage.getItem('autopago_notif_activas') === 'true' && permiso === 'granted';
+      if (activo) {
+        box.className = 'p-3.5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900';
+        box.innerHTML = '✅ Notificaciones <b>activadas</b> en este dispositivo.' +
+          (tokenNotificaciones ? '<br><span class="text-[10px] font-mono break-all">Token: ' + tokenNotificaciones.slice(0, 24) + '…</span>' : '');
+      } else if (permiso === 'denied') {
+        box.className = 'p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900';
+        box.innerHTML = '🚫 Permiso <b>bloqueado</b>. Habilítalo en los ajustes del navegador para este sitio.';
+      } else {
+        box.className = 'p-3.5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900';
+        box.innerHTML = '🔕 Notificaciones <b>desactivadas</b>. Pulsa "Activar Notificaciones" para recibir avisos de pagos.';
+      }
+    }
+
+    async function activarNotificaciones() {
+      if (!notificacionesSoportadas()) {
+        mostrarToast('Este navegador no permite notificaciones', '⚠️');
+        return;
+      }
+      const permiso = await Notification.requestPermission();
+      if (permiso !== 'granted') {
+        mostrarToast('Permiso de notificaciones no concedido', '🔕');
+        actualizarEstadoNotificaciones();
+        return;
+      }
+      localStorage.setItem('autopago_notif_activas', 'true');
+      await registrarTokenNotificaciones();
+      actualizarEstadoNotificaciones();
+      mostrarToast('Notificaciones activadas en este dispositivo', '🔔');
+    }
+
+    function desactivarNotificaciones() {
+      localStorage.setItem('autopago_notif_activas', 'false');
+      actualizarEstadoNotificaciones();
+      mostrarToast('Notificaciones desactivadas', '🔕');
+    }
+
+    async function registrarTokenNotificaciones() {
+      if (!VAPID_PUBLIC_KEY) return null;
+      if (typeof firebase === 'undefined' || !firebase.messaging) return null;
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        messagingFirebase = firebase.messaging();
+        messagingFirebase.onMessage((payload) => {
+          const n = payload.notification || {};
+          mostrarToast(n.title || '💳 Nuevo pago reportado', '🔔');
+          if (document.visibilityState === 'visible') cargarPagosDesdeNube();
+        });
+        const token = await messagingFirebase.getToken({ vapidKey: VAPID_PUBLIC_KEY });
+        if (token) {
+          tokenNotificaciones = token;
+          localStorage.setItem(STORAGE_KEY_TOKEN_NOTIF, token);
+          if (dbFirebase) {
+            await dbFirebase.collection('suscripciones').doc(token).set({
+              token,
+              creado: new Date().toISOString(),
+              dispositivo: navigator.userAgent.slice(0, 180)
+            });
+          }
+        }
+        return token;
+      } catch (e) {
+        console.warn('No se pudo registrar el token de notificaciones:', e.message);
+        return null;
+      }
+    }
+
+    // Aviso al administrador cuando entra un pago nuevo
+    function notificarPagoNuevo(pago) {
+      const titulo = '💳 Nuevo pago reportado';
+      const cuerpo = `${pago.nombre} — Apto ${pago.apartamento} · Puesto ${pago.puesto} — $${Number(pago.monto).toFixed(2)}`;
+
+      if (isAdminAutenticado) {
+        mostrarToast(`${pago.nombre} pagó $${Number(pago.monto).toFixed(2)}`, '🔔');
+      }
+
+      if (notificacionesSoportadas() && Notification.permission === 'granted' && localStorage.getItem('autopago_notif_activas') === 'true') {
+        try {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(titulo, {
+                body: cuerpo,
+                icon: 'icons/icon-192.png',
+                badge: 'icons/icon-192.png',
+                tag: pago.id || 'pago-nuevo',
+                data: { url: './index.html?vista=admin' }
+              });
+            });
+          } else {
+            new Notification(titulo, { body: cuerpo, icon: 'icons/icon-192.png' });
+          }
+        } catch (e) { /* silencioso */ }
+      }
+    }
+
+    function probarNotificacion() {
+      if (!notificacionesSoportadas() || Notification.permission !== 'granted') {
+        mostrarToast('Primero activa las notificaciones', '⚠️');
+        return;
+      }
+      if (localStorage.getItem('autopago_notif_activas') !== 'true') localStorage.setItem('autopago_notif_activas', 'true');
+      notificarPagoNuevo({
+        id: 'prueba_' + Date.now(),
+        nombre: 'Residente de Prueba',
+        apartamento: '1-A',
+        puesto: '0001',
+        monto: Number(configuracion.cuota) || 15
+      });
+      mostrarToast('Notificación de prueba enviada', '🧪');
+    }
+
+    // ==============================================================
+    // DIAGNÓSTICO DE INSTALACIÓN (por qué el móvil no deja instalar)
+    // ==============================================================
+    async function diagnosticarInstalacion() {
+      const info = { protocolo: location.protocol, servidor: location.host };
+      try {
+        const mf = await fetch('manifest.json', { cache: 'no-store' });
+        info.manifestOk = mf.ok;
+        const datos = await mf.json();
+        info.nombre = datos.name;
+        info.display = datos.display;
+        info.iconos = [];
+        for (const ic of datos.icons || []) {
+          const r = await fetch(ic.src);
+          info.iconos.push(`${ic.sizes} ${ic.purpose || ''} → HTTP ${r.status}`);
+        }
+      } catch (e) { info.manifestError = e.message; }
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        info.serviceWorkers = regs.length;
+        info.swAlcance = regs[0] ? regs[0].scope : null;
+      } catch (e) { info.swError = e.message; }
+      info.yaInstalada = yaEstaInstalada();
+      info.hayPromptNativo = !!deferredPromptInstalacion;
+      info.permisoNotif = (typeof Notification !== 'undefined') ? Notification.permission : 'no soportado';
+
+      console.log('Diagnóstico de instalación:', info);
+      alert(
+        'DIAGNÓSTICO DE INSTALACIÓN\n\n' +
+        '• Protocolo: ' + info.protocolo + (info.protocolo === 'https:' ? ' ✅' : ' ⚠️ (en el móvil debe ser https)') + '\n' +
+        '• Manifest: ' + (info.manifestOk ? 'encontrado ✅' : 'NO encontrado ❌') + '\n' +
+        '• Nombre: ' + (info.nombre || '—') + '\n' +
+        '• Modo display: ' + (info.display || '—') + (info.display === 'standalone' ? ' ✅' : '') + '\n' +
+        '• Iconos:\n   ' + ((info.iconos && info.iconos.length) ? info.iconos.join('\n   ') : 'ninguno ❌') + '\n' +
+        '• Service Workers registrados: ' + (info.serviceWorkers ?? 'error') + '\n' +
+        '• Ya instalada: ' + (info.yaInstalada ? 'sí' : 'no') + '\n' +
+        '• Prompt nativo disponible: ' + (info.hayPromptNativo ? 'sí ✅' : 'no (usa el menú ⋮ de Chrome)') + '\n\n' +
+        'Si el manifest y los iconos están en ✅ y estás en https con Chrome, la opción "Instalar aplicación" aparecerá en el menú ⋮.'
+      );
+      return info;
+    }
+
+    // ==============================================================
+    // INSTALACIÓN COMO APP (Chrome / Edge / Android / iOS)
+    // ==============================================================
     let deferredPromptInstalacion = null;
 
+    function yaEstaInstalada() {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+             window.navigator.standalone === true;
+    }
+
+    function entornoInstalacion() {
+      const ua = navigator.userAgent;
+      const esIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const esSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+      return { ios: esIOS, safari: esSafari, permiteInstalar: !esIOS || esSafari };
+    }
+
+    function mostrarBotonInstalar() {
+      const btn = document.getElementById('btn-instalar-app');
+      if (!btn) return;
+      if (yaEstaInstalada()) { btn.classList.add('hidden'); return; }
+      btn.classList.remove('hidden');
+      const ent = entornoInstalacion();
+      if (ent.ios && !ent.safari) btn.innerHTML = '<span>📥 Cómo instalar</span>';
+      else btn.innerHTML = '<span>📥 Instalar App</span>';
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Chrome nos avisa que la app es instalable: mostrar el botón
       e.preventDefault();
       deferredPromptInstalacion = e;
-      const btn = document.getElementById('btn-instalar-app');
-      if (btn) btn.classList.remove('hidden');
+      mostrarBotonInstalar();
+      actualizarEstadoInstalacion();
     });
 
     async function instalarApp() {
-      if (!deferredPromptInstalacion) {
-        mostrarToast('Para instalar: menú de Chrome → "Instalar aplicación"', '📥');
+      if (yaEstaInstalada()) {
+        mostrarToast('La app ya está instalada en este dispositivo', '✅');
         return;
       }
-      deferredPromptInstalacion.prompt();
-      const { outcome } = await deferredPromptInstalacion.userChoice;
-      if (outcome === 'accepted') {
-        mostrarToast('¡App instalada! Ya puedes abrirla desde tu escritorio', '🎉');
+      if (deferredPromptInstalacion) {
+        deferredPromptInstalacion.prompt();
+        const eleccion = await deferredPromptInstalacion.userChoice;
+        if (eleccion.outcome === 'accepted') {
+          mostrarToast('¡App instalada! Búscala en tu pantalla de inicio', '🎉');
+        } else {
+          mostrarToast('Instalación cancelada', '📥');
+        }
+        deferredPromptInstalacion = null;
+        document.getElementById('btn-instalar-app').classList.add('hidden');
+        return;
       }
-      deferredPromptInstalacion = null;
-      document.getElementById('btn-instalar-app').classList.add('hidden');
+
+      const ent = entornoInstalacion();
+      if (!location.protocol.startsWith('http')) {
+        alert('Para instalar la app hay que abrirla desde su dirección web (https).\n\nAbrir el archivo directamente en la computadora no permite instalarla.');
+        return;
+      }
+      if (ent.ios && !ent.safari) {
+        alert('En iPhone/iPad, Chrome no puede instalar apps.\n\nAbre esta misma dirección en SAFARI y toca Compartir (⬆️) → "Agregar a pantalla de inicio".');
+        return;
+      }
+      if (ent.ios) {
+        alert('Para instalar en iPhone/iPad:\n\n1) Toca el botón Compartir (⬆️) abajo.\n2) Elige "Agregar a pantalla de inicio".\n3) Confirma con "Agregar".');
+        return;
+      }
+      alert('Para instalar la app en Android:\n\n1) Abre el menú ⋮ de Chrome (arriba a la derecha).\n2) Elige "Instalar aplicación" (o "Agregar a pantalla de inicio").\n3) Confirma.\n\nSi no ves la opción:\n• Asegúrate de estar en Chrome (no en el navegador interno de Facebook/Instagram).\n• Espera a que la página cargue por completo y vuelve a intentarlo.');
     }
 
     window.addEventListener('appinstalled', () => {
       deferredPromptInstalacion = null;
-      document.getElementById('btn-instalar-app').classList.add('hidden');
+      const b = document.getElementById('btn-instalar-app');
+      if (b) b.classList.add('hidden');
+      actualizarEstadoInstalacion();
       mostrarToast('¡Instalada! Se agregó a tu pantalla de inicio', '✅');
     });
 
-    // Si ya está instalada (abierta como app), ocultar el botón de instalación
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-      document.getElementById('btn-instalar-app').classList.add('hidden');
+    // Registrar el Service Worker (permite abrir sin conexión e instalar)
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js', { scope: './' })
+          .then(() => console.log('Service Worker registrado.'))
+          .catch(err => console.warn('No se pudo registrar el Service Worker:', err));
+      });
     }
 
     // Iniciar al cargar la página
