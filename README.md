@@ -33,8 +33,9 @@ local y sincroniza al reconectar.
 | Colección | Qué guarda |
 |---|---|
 | `pagos` | Los pagos reportados por los residentes |
-| `configuracion` | Nombre de la app, colores y cuota (se cambia en el Panel Admin → **⚙️ Configuración de la Página**) |
+| `configuracion` | Nombre de la app, colores, cuota y personalización de la ficha (se cambia en el Panel Admin → **⚙️ Configuración de la Página**) |
 | `suscripciones` | (Opcional) Tokens de notificaciones si se configura VAPID |
+| `fichas` | Historial de fichas descargadas/compartidas por la junta |
 
 ### Reglas de seguridad (obligatorio publicarlas)
 En **Firebase Console → Firestore Database → Reglas**, pega esto y pulsa **Publish**:
@@ -52,6 +53,9 @@ service cloud.firestore {
     match /suscripciones/{docId} {
       allow read, write: if true;
     }
+    match /fichas/{docId} {
+      allow read, write: if true;
+    }
   }
 }
 ```
@@ -67,12 +71,28 @@ de funcionar a los **30 días**. Publica las reglas de arriba antes de esa fecha
 
 ## Panel del Administrador
 
-Además de **Conciliación de Pagos** e **Historial por Cliente**, el panel tiene
-la pestaña **⚙️ Configuración de la Página**, desde donde se puede:
+Además de **Conciliación de Pagos** e **Historial por Cliente**, el panel tiene:
+
+### 🧾 Fichas y Registro (solo junta)
+La consulta de ficha es **exclusiva del administrador** (ya no aparece para los
+residentes en el menú de inicio). Desde esta pestaña la junta puede:
+
+- Buscar un residente por **nombre, apartamento o puesto**.
+- Ver la **ficha sellada** con los 12 meses (cancelado / pendiente / por pagar).
+- **Registrar el pago** manualmente desde el botón "➕ Registrar Pago Manual".
+- **Descargar la ficha como imagen PNG** para enviársela al cliente por WhatsApp.
+- **Imprimir** la ficha.
+- Ver el **📤 Historial de Fichas Compartidas** (queda registro de cada descarga).
+
+### ⚙️ Configuración de la Página
+Desde aquí se puede:
 
 - Cambiar el **nombre del edificio**, el **subtítulo** y la **letra del logo**.
 - Ajustar la **cuota mensual** (el monto del reporte se calcula solo).
 - Elegir **colores** (principal, acento y tarjetón) o usar paletas rápidas.
+- **Personalizar la ficha**: colores de fondo, texto, sello *cancelado* y sello
+  *pendiente*, además de **imágenes propias** (fondo de la ficha, imagen del
+  mes cancelado y del mes pendiente).
 - **Guardar** los cambios (se publican en Firestore para todos los dispositivos).
 - Activar **notificaciones** de pagos y ver el **estado de instalación** de la app.
 

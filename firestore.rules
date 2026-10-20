@@ -16,5 +16,10 @@ service cloud.firestore {
     match /suscripciones/{docId} {
       allow read, write: if true;
     }
+
+    // Historial de fichas descargadas/compartidas por la junta
+    match /fichas/{docId} {
+      allow read, write: if true;
+    }
   }
 }

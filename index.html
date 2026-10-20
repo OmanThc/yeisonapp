@@ -101,9 +101,6 @@
         <button id="nav-btn-reportar" onclick="navegarA('reportar')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs transition-colors">
           Reportar Pago
         </button>
-        <button id="nav-btn-consultar" onclick="navegarA('consultar')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-colors">
-          Consultar Ficha
-        </button>
         <button onclick="abrirModalBancos()" class="hidden md:inline-flex px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-colors">
           Datos Bancarios
         </button>
@@ -265,21 +262,24 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- VISTA 2: CONSULTAR FICHA / TARJETÓN (RESIDENTE) -->
+    <!-- VISTA 2: FICHAS (SOLO ADMINISTRADOR)          -->
     <!-- ============================================== -->
     <section id="vista-consultar" class="hidden max-w-2xl mx-auto space-y-5">
 
-      <!-- Barra de Búsqueda -->
+      <!-- Barra de Búsqueda (solo admin) -->
       <div class="bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200/90 space-y-4">
-        <div>
-          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Consultar Ficha y Estatus de Pago</h2>
-          <p class="text-xs text-slate-500 mt-1">
-            Busca por tu <b>Nombre</b>, <b>Apartamento</b> o <b>Nº de Puesto</b> para ver tu ficha digital con los meses sellados.
-          </p>
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">🧾 Fichas de Residentes</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Área exclusiva de la junta. Busca un residente para ver su ficha sellada, <b>registrar pagos</b> o <b>descargarla como imagen</b> para enviarla al cliente.
+            </p>
+          </div>
+          <span class="shrink-0 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">Solo junta</span>
         </div>
 
         <div class="relative">
-          <input type="text" id="input-busqueda-residente" oninput="filtrarFichaResidente(this.value)" placeholder="Escribe tu Nombre, Apto (ej. 3-B) o Puesto (ej. 0003)..." class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900">
+          <input type="text" id="input-busqueda-residente" oninput="filtrarFichaResidente(this.value)" placeholder="Buscar por Nombre, Apto (ej. 3-B) o Puesto (ej. 0003)..." class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900">
           <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
         </div>
 
@@ -294,6 +294,34 @@
       <!-- Contenedor del Tarjetón Físico / Ficha Digital -->
       <div id="contenedor-tarjeta-ficha" class="space-y-4">
         <!-- Generado dinámicamente con estilo Kraft idéntico a la imagen -->
+      </div>
+
+      <!-- Historial de fichas emitidas/compartidas -->
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">📤 Historial de Fichas Compartidas</h3>
+            <p class="text-xs text-slate-500">Registro de las fichas descargadas o enviadas a los residentes.</p>
+          </div>
+          <button onclick="renderizarHistorialFichas()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs">🔄 Actualizar</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-500 uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-3 px-4">Fecha</th>
+                <th class="py-3 px-4">Residente</th>
+                <th class="py-3 px-4">Apto / Puesto</th>
+                <th class="py-3 px-4 text-center">Año</th>
+                <th class="py-3 px-4 text-center">Sellados</th>
+                <th class="py-3 px-4 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-historial-fichas-body" class="divide-y divide-slate-100">
+              <!-- Renderizado dinámicamente -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -359,6 +387,9 @@
         <button id="tab-btn-clientes" onclick="cambiarSubseccionAdmin('clientes')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0">
           👥 Historial de Cuotas por Cliente
         </button>
+        <button id="tab-btn-fichas" onclick="cambiarSubseccionAdmin('fichas')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0">
+          🧾 Fichas y Registro
+        </button>
         <button id="tab-btn-config" onclick="cambiarSubseccionAdmin('config')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 shrink-0">
           ⚙️ Configuración de la Página
         </button>
@@ -413,7 +444,65 @@
         </div>
       </div>
 
-      <!-- SUBSECCIÓN 3: CONFIGURACIÓN DE LA PÁGINA -->
+      <!-- SUBSECCIÓN 3b: FICHAS Y REGISTRO (SOLO ADMIN) -->
+      <div id="subseccion-fichas" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🧾 Fichas de Residentes</h3>
+            <p class="text-xs text-slate-500">Busca un residente para ver su ficha, registrar el pago, descargarla como imagen o imprimirla.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="abrirModalManual()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold">➕ Registrar Pago Manual</button>
+            <button onclick="descargarFichaImagen()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold">🖼️ Descargar Ficha (PNG)</button>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+          <div class="relative">
+            <input type="text" id="input-busqueda-residente-admin" oninput="filtrarFichaAdmin(this.value)" placeholder="Buscar por Nombre, Apto o Puesto..." class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900">
+            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+            <span>Sugerencias rápidas:</span>
+            <button onclick="buscarSugerenciaAdmin('Carlos Mendoza')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Carlos Mendoza</button>
+            <button onclick="buscarSugerenciaAdmin('0003')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-mono font-medium">Puesto 0003</button>
+            <button onclick="buscarSugerenciaAdmin('Ana Gómez')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Ana Gómez</button>
+          </div>
+        </div>
+
+        <div id="contenedor-ficha-admin" class="space-y-4">
+          <div class="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">Busca un residente arriba para ver su ficha sellada.</div>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">📤 Historial de Fichas Compartidas</h3>
+              <p class="text-xs text-slate-500">Registro de las fichas descargadas o enviadas a los residentes.</p>
+            </div>
+            <button onclick="renderizarHistorialFichas()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs">🔄 Actualizar</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-500 uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th class="py-3 px-4">Fecha</th>
+                  <th class="py-3 px-4">Residente</th>
+                  <th class="py-3 px-4">Apto / Puesto</th>
+                  <th class="py-3 px-4 text-center">Año</th>
+                  <th class="py-3 px-4 text-center">Sellados</th>
+                  <th class="py-3 px-4 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-historial-fichas-admin-body" class="divide-y divide-slate-100">
+                <!-- Renderizado dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBSECCIÓN 4: CONFIGURACIÓN DE LA PÁGINA -->
       <div id="subseccion-config" class="hidden space-y-4">
         <!-- Identidad de la página -->
         <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
@@ -480,6 +569,76 @@
             <button type="button" onclick="aplicarPaleta('#0F172A','#334155','#D2B48C')" class="px-3 py-1.5 rounded-lg text-white font-semibold" style="background:#0F172A">Carbón</button>
           </div>
           <p class="text-[11px] text-slate-400">Los cambios se ven en la app al pulsar "Guardar Configuración".</p>
+        </div>
+
+        <!-- Personalización de la Ficha -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🧾 Personalización de la Ficha</h3>
+            <p class="text-slate-500 mt-0.5">Cambia los colores y las imágenes de la ficha sellada. Puedes usar una foto de fondo y sellos propios (imágenes) para los meses cancelados y pendientes.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color de fondo</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-ficha-fondo" value="#D2B48C" oninput="sincronizarColorFicha('fondo')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-ficha-fondo-hex" oninput="sincronizarColorFichaTexto('fondo')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color del texto</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-ficha-texto" value="#2C1D11" oninput="sincronizarColorFicha('texto')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-ficha-texto-hex" oninput="sincronizarColorFichaTexto('texto')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color del sello CANCELADO</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-ficha-cancelado" value="#1A0F07" oninput="sincronizarColorFicha('cancelado')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-ficha-cancelado-hex" oninput="sincronizarColorFichaTexto('cancelado')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Color del sello PENDIENTE</label>
+              <div class="flex items-center gap-2">
+                <input type="color" id="cfg-ficha-pendiente" value="#92400E" oninput="sincronizarColorFicha('pendiente')" class="w-12 h-11 rounded-xl border border-slate-200 cursor-pointer bg-white p-1">
+                <input type="text" id="cfg-ficha-pendiente-hex" oninput="sincronizarColorFichaTexto('pendiente')" class="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase text-xs">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+              <label class="block font-semibold text-slate-700">🖼️ Imagen de fondo de la ficha</label>
+              <p class="text-[11px] text-slate-500">Se usa como fondo del tarjetón.</p>
+              <input type="file" id="cfg-ficha-img-fondo" accept="image/*" onchange="procesarImagenFicha('fondo', this)" class="w-full text-[11px]">
+              <div class="flex items-center gap-2">
+                <img id="cfg-ficha-img-fondo-preview" src="" alt="" class="hidden w-14 h-14 object-cover rounded-lg border border-slate-200 bg-white">
+                <button type="button" onclick="quitarImagenFicha('fondo')" class="text-[11px] px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-semibold">Quitar</button>
+              </div>
+            </div>
+            <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+              <label class="block font-semibold text-slate-700">✅ Imagen del mes CANCELADO</label>
+              <p class="text-[11px] text-slate-500">Sustituye el sello de meses pagados.</p>
+              <input type="file" id="cfg-ficha-img-cancelado" accept="image/*" onchange="procesarImagenFicha('cancelado', this)" class="w-full text-[11px]">
+              <div class="flex items-center gap-2">
+                <img id="cfg-ficha-img-cancelado-preview" src="" alt="" class="hidden w-14 h-14 object-cover rounded-lg border border-slate-200 bg-white">
+                <button type="button" onclick="quitarImagenFicha('cancelado')" class="text-[11px] px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-semibold">Quitar</button>
+              </div>
+            </div>
+            <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+              <label class="block font-semibold text-slate-700">⏳ Imagen del mes PENDIENTE</label>
+              <p class="text-[11px] text-slate-500">Sustituye el sello de meses en revisión.</p>
+              <input type="file" id="cfg-ficha-img-pendiente" accept="image/*" onchange="procesarImagenFicha('pendiente', this)" class="w-full text-[11px]">
+              <div class="flex items-center gap-2">
+                <img id="cfg-ficha-img-pendiente-preview" src="" alt="" class="hidden w-14 h-14 object-cover rounded-lg border border-slate-200 bg-white">
+                <button type="button" onclick="quitarImagenFicha('pendiente')" class="text-[11px] px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-semibold">Quitar</button>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400">Las imágenes se guardan con la configuración y se comparten a todos los dispositivos.</p>
         </div>
 
         <!-- Vista previa y guardar -->
@@ -815,6 +974,8 @@
     let pagoEnRevision = null;
     let montoCalculadoReporte = 15.0;
     let estadoFiltroAdmin = 'todos';
+    let fichaActual = null;          // ficha visible en pantalla (para descargar/registrar)
+    let historialFichas = [];        // registro local de fichas compartidas
 
     // ==============================================================
     // SERVIDOR: FIREBASE (Firestore en la nube)
@@ -920,9 +1081,11 @@
     function refrescarVistaActual() {
       if (pestanaActual === 'admin' && isAdminAutenticado) {
         actualizarPanelAdmin();
-      } else if (pestanaActual === 'consultar') {
-        const input = document.getElementById('input-busqueda-residente');
-        filtrarFichaResidente(input ? input.value : '');
+        const subFichas = document.getElementById('subseccion-fichas');
+        if (subFichas && !subFichas.classList.contains('hidden')) {
+          const inp = document.getElementById('input-busqueda-residente-admin');
+          if (inp && inp.value) filtrarFichaAdmin(inp.value);
+        }
       }
     }
 
@@ -954,6 +1117,9 @@
         try { configuracion = { ...CONFIG_DEFECTO, ...JSON.parse(cfgGuardada) }; } catch (e) { /* usa valores por defecto */ }
       }
       aplicarConfiguracion(configuracion);
+
+      // Cargar historial de fichas compartidas
+      cargarHistorialFichasLocal();
 
       // Establecer fecha de hoy en formulario
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
@@ -1017,9 +1183,14 @@
       }
 
       if (pestana === 'consultar') {
+        if (!isAdminAutenticado) {
+          abrirModalPin();
+          navegarA('reportar');
+          return;
+        }
+        renderizarHistorialFichas();
         const input = document.getElementById('input-busqueda-residente');
-        if (!input.value) input.value = 'Carlos Mendoza';
-        filtrarFichaResidente(input.value);
+        if (input && input.value) filtrarFichaResidente(input.value);
       } else if (pestana === 'admin') {
         if (!isAdminAutenticado) {
           abrirModalPin();
@@ -1214,12 +1385,34 @@
       filtrarFichaResidente(texto);
     }
 
-    function filtrarFichaResidente(query) {
-      const contenedor = document.getElementById('contenedor-tarjeta-ficha');
+    // Requiere sesión de administrador para ver fichas
+    function requiereAdminFicha() {
+      if (isAdminAutenticado) return true;
+      mostrarToast('Inicia sesión como junta para ver las fichas', '🔒');
+      abrirModalPin();
+      return false;
+    }
+
+    // Ficha dentro del panel de administración
+    function buscarSugerenciaAdmin(texto) {
+      const input = document.getElementById('input-busqueda-residente-admin');
+      if (input) input.value = texto;
+      filtrarFichaAdmin(texto);
+    }
+
+    function filtrarFichaAdmin(query) {
+      fichaActual = null;
+      filtrarFichaResidente(query, 'contenedor-ficha-admin');
+    }
+
+    function filtrarFichaResidente(query, contenedorId = 'contenedor-tarjeta-ficha') {
+      if (!requiereAdminFicha()) return;
+      const contenedor = document.getElementById(contenedorId);
+      if (!contenedor) return;
       const q = (query || '').toLowerCase().trim();
 
       if (!q) {
-        contenedor.innerHTML = `<div class="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">Escribe tu nombre o número de puesto arriba para consultar tu ficha.</div>`;
+        contenedor.innerHTML = `<div class="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">Escribe el nombre, apartamento o número de puesto del residente para ver su ficha.</div>`;
         return;
       }
 
@@ -1234,8 +1427,8 @@
         contenedor.innerHTML = `
           <div class="p-8 text-center bg-white rounded-3xl border border-slate-200 space-y-2">
             <p class="font-bold text-slate-800">No se encontró ningún registro para "${query}"</p>
-            <p class="text-xs text-slate-500">¿Aún no has registrado tu pago de este mes?</p>
-            <button onclick="navegarA('reportar')" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Reportar Pago Ahora</button>
+            <p class="text-xs text-slate-500">Verifica el nombre, apartamento o puesto. También puedes registrarlo manualmente.</p>
+            <button onclick="abrirModalManual()" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">➕ Registrar Pago Manual</button>
           </div>
         `;
         return;
@@ -1246,8 +1439,8 @@
       const puestoFormat = principal.puesto.replace(/[^0-9]/g, '').padStart(4, '0') || principal.puesto;
       const pagosDelPuesto = listaPagos.filter(p => p.puesto.toUpperCase() === principal.puesto.toUpperCase());
 
-      // Mapear meses para el año 2025 (o año del pago)
-      const anoFicha = principal.ano_cuota || 2025;
+      // Año de la ficha (el año de la cuota, o el actual)
+      const anoFicha = principal.ano_cuota || ANO_ACTUAL;
       const mapaMeses = {};
       MESES.forEach(m => mapaMeses[m.id] = { estado: 'por_pagar' });
 
@@ -1277,90 +1470,114 @@
         let selloHtml = '';
 
         if (item.estado === 'aprobado') {
-          // SELLO CIRCULAR FISICO: "CANCELADO" con silueta de carro y "EST. II"
-          selloHtml = `
-            <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-white text-[#1a0f07] border-2 border-[#1a0f07] flex flex-col items-center justify-center shadow-xs transform rotate-[-3deg] hover:scale-105 transition-transform cursor-pointer" title="Cuota aprobada - Ver comprobante">
-              <span class="text-[6px] font-black uppercase tracking-tighter leading-none mt-0.5">CANCELADO</span>
-              <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current my-0.5" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
-                <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
-              </svg>
-              <span class="text-[5px] font-bold uppercase tracking-tight text-[#472c18] leading-none mb-0.5">EST. II</span>
-            </div>
-          `;
+          if (configuracion.fichaImgCancelado) {
+            // Imagen personalizada para mes CANCELADO
+            selloHtml = `
+              <img onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' src="${configuracion.fichaImgCancelado}" alt="Cancelado" title="Cuota aprobada - Ver comprobante" class="w-12 h-12 object-contain cursor-pointer hover:scale-105 transition-transform">
+            `;
+          } else {
+            // SELLO CIRCULAR FISICO: "CANCELADO" con silueta de carro y "EST. II"
+            selloHtml = `
+              <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-white flex flex-col items-center justify-center shadow-xs transform rotate-[-3deg] hover:scale-105 transition-transform cursor-pointer" style="color:var(--ficha-cancelado);border:2px solid var(--ficha-cancelado)" title="Cuota aprobada - Ver comprobante">
+                <span class="text-[6px] font-black uppercase tracking-tighter leading-none mt-0.5">CANCELADO</span>
+                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current my-0.5" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                  <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
+                </svg>
+                <span class="text-[5px] font-bold uppercase tracking-tight leading-none mb-0.5" style="color:var(--ficha-cancelado)">EST. II</span>
+              </div>
+            `;
+          }
         } else if (item.estado === 'pendiente') {
-          // SELLO PENDIENTE DE CONFIRMACIÓN
-          selloHtml = `
-            <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-amber-100 text-amber-900 border-2 border-dashed border-amber-800 flex flex-col items-center justify-center shadow-xs animate-pulse cursor-pointer" title="Pago Móvil pendiente de confirmación">
-              <span class="text-sm">⏳</span>
-              <span class="text-[6px] font-bold uppercase tracking-tight leading-none mt-0.5">PENDIENTE</span>
-            </div>
-          `;
+          if (configuracion.fichaImgPendiente) {
+            selloHtml = `
+              <img onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' src="${configuracion.fichaImgPendiente}" alt="Pendiente" title="Pago Móvil pendiente de confirmación" class="w-12 h-12 object-contain cursor-pointer animate-pulse">
+            `;
+          } else {
+            // SELLO PENDIENTE DE CONFIRMACIÓN
+            selloHtml = `
+              <div onclick='abrirModalReciboId("${item.pago ? item.pago.id : ''}")' class="w-12 h-12 rounded-full bg-amber-100 flex flex-col items-center justify-center shadow-xs animate-pulse cursor-pointer" style="color:var(--ficha-pendiente);border:2px dashed var(--ficha-pendiente)" title="Pago Móvil pendiente de confirmación">
+                <span class="text-sm">⏳</span>
+                <span class="text-[6px] font-bold uppercase tracking-tight leading-none mt-0.5">PENDIENTE</span>
+              </div>
+            `;
+          }
         } else {
           // CASILLA POR PAGAR CON SILUETA
           selloHtml = `
-            <div class="w-12 h-12 rounded-full border border-[#4d3119]/30 flex flex-col items-center justify-center opacity-60">
-              <svg viewBox="0 0 24 24" class="w-5 h-5 fill-[#3b2311]" xmlns="http://www.w3.org/2000/svg">
+            <div class="w-12 h-12 rounded-full flex flex-col items-center justify-center opacity-60" style="border:1px solid var(--ficha-texto)">
+              <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current" style="color:var(--ficha-texto)" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
                 <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
               </svg>
-              <span class="text-[6px] font-semibold uppercase text-[#54341b]">POR PAGAR</span>
+              <span class="text-[6px] font-semibold uppercase" style="color:var(--ficha-texto)">POR PAGAR</span>
             </div>
           `;
         }
 
         htmlMeses += `
           <div class="flex items-center justify-between p-1.5 rounded-xl">
-            <span class="font-mono font-bold text-xs text-[#38210f] w-10">${m.abrev}</span>
+            <span class="font-mono font-bold text-xs w-10" style="color:var(--ficha-texto)">${m.abrev}</span>
             <div>${selloHtml}</div>
           </div>
         `;
       });
 
       contenedor.innerHTML = `
-        <div class="flex items-center justify-between gap-3 text-xs mb-2 no-print">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs mb-2 no-print">
           <span class="font-bold text-slate-700">Ficha oficial generada digitalmente</span>
-          <button onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center gap-1.5">
-            🖨️ <span>Imprimir Ficha</span>
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="descargarFichaImagen()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center gap-1.5">
+              🖼️ <span>Descargar Imagen</span>
+            </button>
+            <button onclick="registrarFichaCompartida()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center gap-1.5">
+              📤 <span>Registrar en Historial</span>
+            </button>
+            <button onclick="imprimirFicha()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center gap-1.5">
+              🖨️ <span>Imprimir Ficha</span>
+            </button>
+          </div>
         </div>
 
-        <!-- TARJETÓN KRAFT -->
-        <div class="relative bg-[#D2B48C] text-[#2c1d11] p-6 sm:p-7 rounded-2xl shadow-lg border-2 border-[#8B5A2B]/40 overflow-hidden font-sans select-none print:m-0 print:border-black"
-          style="background-image: radial-gradient(#c49e75 1px, transparent 1px), radial-gradient(#be976d 1px, #d2b48c 1px); background-size: 24px 24px; background-position: 0 0, 12px 12px;">
+        <!-- TARJETÓN KRAFT (colores e imágenes configurables) -->
+        <div id="tarjeton-ficha" class="relative p-6 sm:p-7 rounded-2xl shadow-lg overflow-hidden font-sans select-none print:m-0 print:border-black"
+          style="background-color:var(--ficha-fondo);color:var(--ficha-texto);border:2px solid var(--ficha-borde);">
 
-          <div class="border-2 border-[#3d2615]/80 p-4 sm:p-5 rounded-xl relative">
+          <div class="absolute inset-0 pointer-events-none" style="background-image:radial-gradient(var(--ficha-borde) 1px, transparent 1px), radial-gradient(var(--ficha-borde) 1px, var(--ficha-fondo) 1px); background-size:24px 24px; background-position:0 0, 12px 12px; opacity:.35;"></div>
+          ${configuracion.fichaImgFondo ? `<img src="${configuracion.fichaImgFondo}" alt="" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="opacity:.9">` : ''}
+
+          <div class="relative border-2 p-4 sm:p-5 rounded-xl" style="border-color:var(--ficha-borde)">
 
             <!-- Encabezado con tipografía del carnet -->
-            <div class="border-b-2 border-[#3d2615]/80 pb-3 mb-4">
+            <div class="border-b-2 pb-3 mb-4" style="border-color:var(--ficha-borde)">
               <div class="flex justify-between items-start gap-2">
                 <div>
-                  <h2 class="font-extrabold tracking-widest text-base sm:text-lg uppercase text-[#22140a]">
+                  <h2 class="font-extrabold tracking-widest text-base sm:text-lg uppercase" style="color:var(--ficha-texto)">
                     CONTROL DE PAGO ${anoFicha}
                   </h2>
-                  <p class="text-[11px] font-bold tracking-wider uppercase text-[#422915] mt-0.5">
-                    RESIDENCIAS MAROA - ESTACIONAMIENTO II
+                  <p class="text-[11px] font-bold tracking-wider uppercase mt-0.5" style="color:var(--ficha-texto);opacity:.8">
+                    ${(configuracion.nombreEdificio || 'RESIDENCIAS MAROA').toUpperCase()} - ${(configuracion.subtitulo || 'ESTACIONAMIENTO II').toUpperCase()}
                   </p>
                 </div>
 
                 <!-- Puesto Estampado -->
                 <div class="text-right shrink-0">
-                  <span class="text-[10px] font-black tracking-widest uppercase block text-[#422915]">PUESTO</span>
-                  <span class="font-mono font-black text-2xl sm:text-3xl text-[#1a0e05] tracking-widest inline-block transform -rotate-1 drop-shadow-xs">
+                  <span class="text-[10px] font-black tracking-widest uppercase block" style="color:var(--ficha-texto);opacity:.8">PUESTO</span>
+                  <span class="font-mono font-black text-2xl sm:text-3xl tracking-widest inline-block transform -rotate-1 drop-shadow-xs" style="color:var(--ficha-texto)">
                     ${puestoFormat}
                   </span>
                 </div>
               </div>
 
               <!-- Datos Residente -->
-              <div class="grid grid-cols-2 gap-4 text-xs mt-2 pt-2 border-t border-[#3d2615]/30">
+              <div class="grid grid-cols-2 gap-4 text-xs mt-2 pt-2 border-t" style="border-color:var(--ficha-borde)">
                 <div>
-                  <span class="text-[9px] font-bold text-[#5c3a1e] uppercase block">Residente</span>
-                  <span class="font-bold text-[#1f1207] truncate block text-sm">${principal.nombre}</span>
+                  <span class="text-[9px] font-bold uppercase block" style="color:var(--ficha-texto);opacity:.7">Residente</span>
+                  <span class="font-bold truncate block text-sm" style="color:var(--ficha-texto)">${principal.nombre}</span>
                 </div>
                 <div>
-                  <span class="text-[9px] font-bold text-[#5c3a1e] uppercase block">Apartamento</span>
-                  <span class="font-bold text-[#1f1207] text-sm">${principal.apartamento}</span>
+                  <span class="text-[9px] font-bold uppercase block" style="color:var(--ficha-texto);opacity:.7">Apartamento</span>
+                  <span class="font-bold text-sm" style="color:var(--ficha-texto)">${principal.apartamento}</span>
                 </div>
               </div>
             </div>
@@ -1371,14 +1588,14 @@
             </div>
 
             <!-- Pie del Tarjetón con Silueta de Carro y Solvencia -->
-            <div class="border-t-2 border-[#3d2615]/80 pt-3 mt-2 flex items-center justify-between">
+            <div class="border-t-2 pt-3 mt-2 flex items-center justify-between" style="border-color:var(--ficha-borde)">
               <div class="text-xs">
-                <span class="text-[10px] font-black uppercase tracking-wider block text-[#422915]">SOLVENCIA ${anoFicha}</span>
-                <span class="font-bold text-sm text-[#1a0e05]">${totalAprobados} de 12 meses cancelados</span>
-                ${totalPendientes > 0 ? `<span class="text-[11px] font-semibold text-amber-900 block">(${totalPendientes} mes en revisión)</span>` : ''}
+                <span class="text-[10px] font-black uppercase tracking-wider block" style="color:var(--ficha-texto);opacity:.8">SOLVENCIA ${anoFicha}</span>
+                <span class="font-bold text-sm" style="color:var(--ficha-texto)">${totalAprobados} de 12 meses cancelados</span>
+                ${totalPendientes > 0 ? `<span class="text-[11px] font-semibold block" style="color:var(--ficha-pendiente)">(${totalPendientes} mes en revisión)</span>` : ''}
               </div>
               <!-- Estampa de carro grande a la derecha -->
-              <div class="opacity-80 shrink-0 transform -rotate-3 text-[#1f1207]">
+              <div class="opacity-80 shrink-0 transform -rotate-3" style="color:var(--ficha-texto)">
                 <svg viewBox="0 0 24 24" class="w-12 h-12 fill-current" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
                   <circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/>
@@ -1389,6 +1606,18 @@
           </div>
         </div>
       `;
+
+      // Recordar la ficha visible para poder descargarla/registrarla
+      fichaActual = {
+        nombre: principal.nombre,
+        apartamento: principal.apartamento,
+        puesto: principal.puesto,
+        puestoFormat,
+        anoFicha,
+        totalAprobados,
+        totalPendientes,
+        mapaMeses
+      };
     }
 
     // ==============================================================
@@ -1476,14 +1705,17 @@
 
       _setPanel('subseccion-conciliacion', sub === 'conciliacion');
       _setPanel('subseccion-clientes', sub === 'clientes');
+      _setPanel('subseccion-fichas', sub === 'fichas');
       _setPanel('subseccion-config', sub === 'config');
       _setTab('tab-btn-conciliacion', sub === 'conciliacion');
       _setTab('tab-btn-clientes', sub === 'clientes');
+      _setTab('tab-btn-fichas', sub === 'fichas');
       _setTab('tab-btn-config', sub === 'config');
 
       if (sub === 'config') cargarFormularioConfiguracion();
       if (sub === 'conciliacion') renderizarTablaAdmin(estadoFiltroAdmin === 'todos' ? listaPagos : listaPagos.filter(p => p.estado === estadoFiltroAdmin));
       if (sub === 'clientes') renderizarClientesAdmin();
+      if (sub === 'fichas') { renderizarHistorialFichas(); actualizarBotonesFicha(); }
     }
 
     function renderizarClientesAdmin() {
@@ -1551,8 +1783,16 @@
     }
 
     function verFichaCliente(nombre) {
-      navegarA('consultar');
-      buscarSugerencia(nombre);
+      if (!isAdminAutenticado) { abrirModalPin(); return; }
+      navegarA('admin');
+      cambiarSubseccionAdmin('fichas');
+      buscarSugerenciaAdmin(nombre);
+    }
+
+    // Actualiza los botones de acción de la ficha según si hay una ficha visible
+    function actualizarBotonesFicha() {
+      const btn = document.getElementById('btn-descargar-ficha');
+      if (btn) btn.disabled = !fichaActual;
     }
 
     function confirmarPagoMovil(id) {
@@ -1790,6 +2030,310 @@
     }
 
     // ==============================================================
+    // FICHA: descargar como imagen, historial y registro
+    // ==============================================================
+    function imprimirFicha() {
+      if (!requiereAdminFicha()) return;
+      if (!fichaActual) { mostrarToast('Primero busca un residente', '⚠️'); return; }
+      window.print();
+    }
+
+    // Dibuja la ficha en un canvas y la descarga como PNG
+    async function descargarFichaImagen() {
+      if (!requiereAdminFicha()) return;
+      if (!fichaActual) { mostrarToast('Primero busca un residente', '⚠️'); return; }
+
+      const dato = fichaActual;
+      const f = { ...CONFIG_DEFECTO, ...configuracion };
+      const W = 760, padding = 26;
+      const filaAlto = 42;
+      const anchoSello = 74;
+      const cols = 2;
+      const filas = 6;
+      const H = 210 + filas * filaAlto + 90;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      // Fondo
+      ctx.fillStyle = f.fichaFondo;
+      ctx.fillRect(0, 0, W, H);
+
+      // Textura sutil
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      for (let yy = 0; yy < H; yy += 22) for (let xx = 0; xx < W; xx += 22) ctx.fillRect(xx, yy, 1.4, 1.4);
+
+      // Imagen de fondo personalizada
+      if (f.fichaImgFondo) {
+        try { await dibujarImagen(ctx, f.fichaImgFondo, 0, 0, W, H, true); } catch (e) { /* ignora */ }
+      }
+
+      const texto = f.fichaTexto;
+      const borde = f.fichaBorde;
+
+      // Marco
+      ctx.strokeStyle = borde; ctx.lineWidth = 3;
+      ctx.strokeRect(padding, padding, W - padding * 2, H - padding * 2);
+      const ix = padding + 16, iy = padding + 16, iw = W - (padding + 16) * 2;
+      ctx.lineWidth = 2; ctx.strokeRect(ix, iy, iw, H - (padding + 16) * 2 - iy + padding);
+
+      const font = (px, weight = 'bold') => `${weight} ${px}px Arial, Helvetica, sans-serif`;
+      const centro = (t, x, y) => { ctx.textAlign = 'center'; ctx.fillText(t, x, y); ctx.textAlign = 'left'; };
+
+      // Encabezado
+      let y = iy + 40;
+      ctx.fillStyle = texto; ctx.font = font(26);
+      ctx.fillText(`CONTROL DE PAGO ${dato.anoFicha}`, ix, y);
+      ctx.font = font(13, '600');
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(`${(f.nombreEdificio || '').toUpperCase()} - ${(f.subtitulo || '').toUpperCase()}`, ix, y + 22);
+      ctx.globalAlpha = 1;
+
+      // Puesto (arriba a la derecha)
+      ctx.font = font(12);
+      ctx.globalAlpha = 0.85;
+      centro('PUESTO', ix + iw - 10, iy + 34);
+      ctx.globalAlpha = 1;
+      ctx.font = font(40);
+      centro(dato.puestoFormat, ix + iw - 10, iy + 74);
+
+      // Línea separadora
+      y += 46;
+      ctx.strokeStyle = borde; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix + iw, y); ctx.stroke();
+
+      // Datos del residente
+      y += 26;
+      ctx.fillStyle = texto; ctx.font = font(10); ctx.globalAlpha = 0.7;
+      ctx.fillText('RESIDENTE', ix, y);
+      ctx.fillText('APARTAMENTO', ix + iw / 2, y);
+      ctx.globalAlpha = 1; ctx.font = font(17);
+      ctx.fillText(dato.nombre, ix, y + 22);
+      ctx.fillText(dato.apartamento, ix + iw / 2, y + 22);
+
+      y += 42;
+      ctx.strokeStyle = borde; ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix + iw, y); ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Grilla de meses
+      const colAncho = iw / cols;
+      const mesOrden = MESES;
+      const yInicio = y + 14;
+      for (let i = 0; i < mesOrden.length; i++) {
+        const col = i % cols;
+        const filaReal = Math.floor(i / cols);
+        const cx = ix + col * colAncho;
+        const cy = yInicio + filaReal * filaAlto;
+        const m = mesOrden[i];
+        const item = dato.mapaMeses[m.id] || { estado: 'por_pagar' };
+
+        ctx.fillStyle = texto; ctx.font = font(15);
+        ctx.fillText(m.abrev, cx, cy + 26);
+
+        const sX = cx + colAncho - anchoSello - 6;
+        const sY = cy;
+
+        if (item.estado === 'aprobado') {
+          if (f.fichaImgCancelado) {
+            try { await dibujarImagen(ctx, f.fichaImgCancelado, sX, sY, anchoSello, filaAlto - 6, false); } catch (e) { selloCancelado(ctx, sX, sY, anchoSello, filaAlto - 6, f.fichaCancelado, texto); }
+          } else {
+            selloCancelado(ctx, sX, sY, anchoSello, filaAlto - 6, f.fichaCancelado, texto);
+          }
+        } else if (item.estado === 'pendiente') {
+          if (f.fichaImgPendiente) {
+            try { await dibujarImagen(ctx, f.fichaImgPendiente, sX, sY, anchoSello, filaAlto - 6, false); } catch (e) { selloPendiente(ctx, sX, sY, anchoSello, filaAlto - 6, f.fichaPendiente); }
+          } else {
+            selloPendiente(ctx, sX, sY, anchoSello, filaAlto - 6, f.fichaPendiente);
+          }
+        } else {
+          selloPorPagar(ctx, sX, sY, anchoSello, filaAlto - 6, texto);
+        }
+      }
+
+      // Pie
+      y = yInicio + filas * filaAlto + 20;
+      ctx.strokeStyle = borde; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix + iw, y); ctx.stroke();
+      ctx.fillStyle = texto; ctx.font = font(10); ctx.globalAlpha = 0.75;
+      ctx.fillText(`SOLVENCIA ${dato.anoFicha}`, ix, y + 24);
+      ctx.globalAlpha = 1; ctx.font = font(16);
+      ctx.fillText(`${dato.totalAprobados} de 12 meses cancelados`, ix, y + 46);
+      if (dato.totalPendientes > 0) {
+        ctx.fillStyle = f.fichaPendiente; ctx.font = font(12, '600');
+        ctx.fillText(`(${dato.totalPendientes} mes en revisión)`, ix, y + 66);
+      }
+
+      // Descargar
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Ficha_${dato.puestoFormat}_${(dato.nombre || '').replace(/\s+/g, '_')}_${dato.anoFicha}.png`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+      registrarFichaCompartida();
+      mostrarToast('Ficha descargada como imagen', '🖼️');
+    }
+
+    function dibujarImagen(ctx, src, x, y, w, h, cubrir) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (cubrir) {
+            const escala = Math.max(w / img.width, h / img.height);
+            const dw = img.width * escala, dh = img.height * escala;
+            ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+          } else {
+            const escala = Math.min(w / img.width, h / img.height);
+            const dw = img.width * escala, dh = img.height * escala;
+            ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+          }
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function selloCancelado(ctx, x, y, w, h, color, texto) {
+      const cx = x + w / 2, cy = y + h / 2, r = Math.min(w, h) / 2 - 2;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = color; ctx.textAlign = 'center';
+      ctx.font = 'bold 7px Arial'; ctx.fillText('CANCELADO', cx, cy - 2);
+      carSvgPath(ctx, cx, cy + 4, 18, color);
+      ctx.font = 'bold 6px Arial'; ctx.fillText('EST. II', cx, cy + 18);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    function selloPendiente(ctx, x, y, w, h, color) {
+      const cx = x + w / 2, cy = y + h / 2, r = Math.min(w, h) / 2 - 2;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#FEF3C7'; ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color; ctx.textAlign = 'center';
+      ctx.font = '12px Arial'; ctx.fillText('⏳', cx, cy + 2);
+      ctx.font = 'bold 6px Arial'; ctx.fillText('PENDIENTE', cx, cy + 16);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    function selloPorPagar(ctx, x, y, w, h, color) {
+      const cx = x + w / 2, cy = y + h / 2, r = Math.min(w, h) / 2 - 2;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
+      carSvgPath(ctx, cx, cy, 18, color);
+      ctx.fillStyle = color; ctx.textAlign = 'center';
+      ctx.font = 'bold 6px Arial'; ctx.fillText('POR PAGAR', cx, cy + 15);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    // Dibuja la silueta de carro con líneas simples en el canvas
+    function carSvgPath(ctx, cx, cy, size, color) {
+      ctx.save();
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.4;
+      const w = size, h = size * 0.55;
+      const x = cx - w / 2, y = cy - h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y + h * 0.55);
+      ctx.lineTo(x + w * 0.12, y + h * 0.15);
+      ctx.quadraticCurveTo(x + w * 0.2, y, x + w * 0.35, y);
+      ctx.lineTo(x + w * 0.65, y);
+      ctx.quadraticCurveTo(x + w * 0.8, y, x + w * 0.88, y + h * 0.15);
+      ctx.lineTo(x + w, y + h * 0.55);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.closePath();
+      ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(x + w * 0.25, y + h, h * 0.28, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + w * 0.75, y + h, h * 0.28, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // ---- Historial de fichas compartidas ----
+    function registrarFichaCompartida() {
+      if (!fichaActual) return;
+      const reg = {
+        id: `ficha_${Date.now()}`,
+        nombre: fichaActual.nombre,
+        apartamento: fichaActual.apartamento,
+        puesto: fichaActual.puesto,
+        puestoFormat: fichaActual.puestoFormat,
+        ano: fichaActual.anoFicha,
+        sellados: fichaActual.totalAprobados,
+        fecha: new Date().toISOString().slice(0, 10)
+      };
+
+      // Local
+      historialFichas.unshift(reg);
+      if (historialFichas.length > 200) historialFichas = historialFichas.slice(0, 200);
+      localStorage.setItem('autopago_fichas_v1', JSON.stringify(historialFichas));
+
+      // Nube
+      if (dbFirebase) {
+        dbFirebase.collection('fichas').doc(reg.id).set(reg)
+          .catch(err => console.warn('No se pudo guardar la ficha en la nube:', err.message));
+      }
+
+      renderizarHistorialFichas();
+      mostrarToast(`Ficha de ${reg.nombre} registrada en el historial`, '📤');
+    }
+
+    async function renderizarHistorialFichas() {
+      const tbody = document.getElementById('tabla-historial-fichas-body')
+                 || document.getElementById('tabla-historial-fichas-admin-body');
+      if (!tbody) return;
+
+      // Intentar traer desde la nube; si falla, usar lo local
+      if (dbFirebase) {
+        try {
+          const snap = await dbFirebase.collection('fichas').get();
+          const deNube = snap.docs.map(d => d.data()).filter(f => f && f.id);
+          if (deNube.length) {
+            deNube.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+            historialFichas = deNube;
+            localStorage.setItem('autopago_fichas_v1', JSON.stringify(historialFichas));
+          }
+        } catch (e) { /* usa local */ }
+      }
+
+      if (!historialFichas.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">Aún no se ha descargado ni compartido ninguna ficha.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = historialFichas.map(f => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-3 px-4 font-mono text-slate-600">${f.fecha}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${f.nombre}</td>
+          <td class="py-3 px-4"><span class="font-bold text-slate-800">Apto ${f.apartamento}</span> · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${f.puesto}</span></td>
+          <td class="py-3 px-4 text-center font-mono">${f.ano}</td>
+          <td class="py-3 px-4 text-center font-bold">${f.sellados} / 12</td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="buscarSugerenciaAdmin('${String(f.nombre).replace(/'/g, "\\'")}')" class="text-indigo-600 hover:underline font-semibold">Ver ficha</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function cargarHistorialFichasLocal() {
+      try {
+        const g = localStorage.getItem('autopago_fichas_v1');
+        if (g) historialFichas = JSON.parse(g) || [];
+      } catch (e) { historialFichas = []; }
+    }
+
+    // ==============================================================
     // CONFIGURACIÓN DE LA PÁGINA (nombre, colores, cuota)
     // Se guarda en Firestore para que aplique a todos los dispositivos.
     // ==============================================================
@@ -1801,7 +2345,16 @@
       cuota: 15.0,
       colorPrimario: '#4338CA',
       colorAcento: '#6366F1',
-      colorKraft: '#D2B48C'
+      colorKraft: '#D2B48C',
+      // Personalización de la ficha sellada
+      fichaFondo: '#D2B48C',
+      fichaTexto: '#2C1D11',
+      fichaBorde: '#8B5A2B',
+      fichaCancelado: '#1A0F07',
+      fichaPendiente: '#92400E',
+      fichaImgFondo: '',
+      fichaImgCancelado: '',
+      fichaImgPendiente: ''
     };
     let configuracion = { ...CONFIG_DEFECTO };
 
@@ -1836,6 +2389,11 @@
       raiz.style.setProperty('--color-acento', configuracion.colorAcento);
       raiz.style.setProperty('--color-kraft', configuracion.colorKraft);
       raiz.style.setProperty('--color-on-primario', contraste(configuracion.colorPrimario));
+      raiz.style.setProperty('--ficha-fondo', configuracion.fichaFondo);
+      raiz.style.setProperty('--ficha-texto', configuracion.fichaTexto);
+      raiz.style.setProperty('--ficha-borde', configuracion.fichaBorde);
+      raiz.style.setProperty('--ficha-cancelado', configuracion.fichaCancelado);
+      raiz.style.setProperty('--ficha-pendiente', configuracion.fichaPendiente);
 
       document.title = `${configuracion.nombreEdificio} — Control de Estacionamiento`;
       const nombreEl = document.getElementById('header-nombre-edificio');
@@ -1868,6 +2426,18 @@
       set('cfg-color-acento-hex', configuracion.colorAcento);
       set('cfg-color-kraft', configuracion.colorKraft);
       set('cfg-color-kraft-hex', configuracion.colorKraft);
+      // Personalización de la ficha
+      set('cfg-ficha-fondo', configuracion.fichaFondo);
+      set('cfg-ficha-fondo-hex', configuracion.fichaFondo);
+      set('cfg-ficha-texto', configuracion.fichaTexto);
+      set('cfg-ficha-texto-hex', configuracion.fichaTexto);
+      set('cfg-ficha-cancelado', configuracion.fichaCancelado);
+      set('cfg-ficha-cancelado-hex', configuracion.fichaCancelado);
+      set('cfg-ficha-pendiente', configuracion.fichaPendiente);
+      set('cfg-ficha-pendiente-hex', configuracion.fichaPendiente);
+      actualizarPreviewImagenFicha('fondo', configuracion.fichaImgFondo);
+      actualizarPreviewImagenFicha('cancelado', configuracion.fichaImgCancelado);
+      actualizarPreviewImagenFicha('pendiente', configuracion.fichaImgPendiente);
       refrescarVistaPreviaConfig();
       actualizarEstadoNotificaciones();
       actualizarEstadoInstalacion();
@@ -1961,11 +2531,21 @@
         cuota: Math.max(0.01, parseFloat(val('cfg-cuota', CONFIG_DEFECTO.cuota)) || CONFIG_DEFECTO.cuota),
         colorPrimario: val('cfg-color-primario', CONFIG_DEFECTO.colorPrimario),
         colorAcento: val('cfg-color-acento', CONFIG_DEFECTO.colorAcento),
-        colorKraft: val('cfg-color-kraft', CONFIG_DEFECTO.colorKraft)
+        colorKraft: val('cfg-color-kraft', CONFIG_DEFECTO.colorKraft),
+        // Ficha personalizada (colores + imágenes se conservan de la config actual)
+        fichaFondo: val('cfg-ficha-fondo', CONFIG_DEFECTO.fichaFondo),
+        fichaTexto: val('cfg-ficha-texto', CONFIG_DEFECTO.fichaTexto),
+        fichaBorde: oscurecer(val('cfg-ficha-fondo', CONFIG_DEFECTO.fichaFondo), 0.7),
+        fichaCancelado: val('cfg-ficha-cancelado', CONFIG_DEFECTO.fichaCancelado),
+        fichaPendiente: val('cfg-ficha-pendiente', CONFIG_DEFECTO.fichaPendiente),
+        fichaImgFondo: configuracion.fichaImgFondo || '',
+        fichaImgCancelado: configuracion.fichaImgCancelado || '',
+        fichaImgPendiente: configuracion.fichaImgPendiente || ''
       };
 
       aplicarConfiguracion(cfg);
       localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+      refrescarFichaVisible();
 
       if (dbFirebase) {
         dbFirebase.collection('configuracion').doc('general').set(configuracion)
@@ -1976,12 +2556,110 @@
       }
     }
 
+    // Vuelve a dibujar la ficha que esté visible (para aplicar colores/imágenes al instante)
+    function refrescarFichaVisible() {
+      const inpAdmin = document.getElementById('input-busqueda-residente-admin');
+      const inpPub = document.getElementById('input-busqueda-residente');
+      if (inpAdmin && inpAdmin.value) filtrarFichaAdmin(inpAdmin.value);
+      else if (inpPub && inpPub.value) filtrarFichaResidente(inpPub.value);
+    }
+
+    // ---- Colores personalizados de la ficha ----
+    function sincronizarColorFicha(tipo) {
+      const color = document.getElementById('cfg-ficha-' + tipo);
+      const hex = document.getElementById('cfg-ficha-' + tipo + '-hex');
+      if (color && hex) hex.value = color.value.toUpperCase();
+      aplicarConfiguracion(recogerConfigActual());
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+      refrescarFichaVisible();
+    }
+
+    function sincronizarColorFichaTexto(tipo) {
+      const color = document.getElementById('cfg-ficha-' + tipo);
+      const hex = document.getElementById('cfg-ficha-' + tipo + '-hex');
+      if (!hex) return;
+      let v = hex.value.trim();
+      if (v && !v.startsWith('#')) v = '#' + v;
+      if (/^#[0-9a-fA-F]{6}$/.test(v) && color) color.value = v.toLowerCase();
+      aplicarConfiguracion(recogerConfigActual());
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+      refrescarFichaVisible();
+    }
+
+    // Reúne lo que hay ahora mismo en el formulario de configuración
+    function recogerConfigActual() {
+      const val = (id, alt) => { const el = document.getElementById(id); return el && el.value !== '' ? el.value : alt; };
+      return {
+        ...configuracion,
+        nombreEdificio: val('cfg-nombre-edificio', configuracion.nombreEdificio).trim(),
+        subtitulo: val('cfg-subtitulo', configuracion.subtitulo).trim(),
+        logoLetra: (val('cfg-logo-letra', configuracion.logoLetra).trim() || 'P').toUpperCase().slice(0, 2),
+        cuota: Math.max(0.01, parseFloat(val('cfg-cuota', configuracion.cuota)) || configuracion.cuota),
+        colorPrimario: val('cfg-color-primario', configuracion.colorPrimario),
+        colorAcento: val('cfg-color-acento', configuracion.colorAcento),
+        colorKraft: val('cfg-color-kraft', configuracion.colorKraft),
+        fichaFondo: val('cfg-ficha-fondo', configuracion.fichaFondo),
+        fichaTexto: val('cfg-ficha-texto', configuracion.fichaTexto),
+        fichaBorde: oscurecer(val('cfg-ficha-fondo', configuracion.fichaFondo), 0.7),
+        fichaCancelado: val('cfg-ficha-cancelado', configuracion.fichaCancelado),
+        fichaPendiente: val('cfg-ficha-pendiente', configuracion.fichaPendiente)
+      };
+    }
+
+    // ---- Imágenes personalizadas de la ficha ----
+    function procesarImagenFicha(tipo, input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Redimensionar para no saturar la base de datos
+          const maxLado = 900;
+          let w = img.width, h = img.height;
+          if (w > maxLado || h > maxLado) {
+            const escala = Math.min(maxLado / w, maxLado / h);
+            w = Math.round(w * escala); h = Math.round(h * escala);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/png');
+          configuracion['fichaImg' + capitalizar(tipo)] = dataUrl;
+          localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+          actualizarPreviewImagenFicha(tipo, dataUrl);
+          refrescarFichaVisible();
+          mostrarToast('Imagen cargada. Pulsa "Guardar Configuración" para publicarla', '🖼️');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function quitarImagenFicha(tipo) {
+      configuracion['fichaImg' + capitalizar(tipo)] = '';
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+      actualizarPreviewImagenFicha(tipo, '');
+      refrescarFichaVisible();
+      mostrarToast('Imagen quitada. Guarda la configuración para publicarla', '🗑️');
+    }
+
+    function actualizarPreviewImagenFicha(tipo, dataUrl) {
+      const img = document.getElementById('cfg-ficha-img-' + tipo + '-preview');
+      if (!img) return;
+      if (dataUrl) { img.src = dataUrl; img.classList.remove('hidden'); }
+      else { img.src = ''; img.classList.add('hidden'); }
+    }
+
+    function capitalizar(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
     function restaurarConfiguracion() {
-      if (!confirm('¿Restaurar el nombre y los colores por defecto?')) return;
+      if (!confirm('¿Restaurar el nombre, los colores y las imágenes por defecto?')) return;
       aplicarConfiguracion({ ...CONFIG_DEFECTO });
       localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
       if (dbFirebase) dbFirebase.collection('configuracion').doc('general').set(configuracion).catch(() => {});
       cargarFormularioConfiguracion();
+      refrescarFichaVisible();
       mostrarToast('Valores por defecto restaurados', '↩️');
     }
 
