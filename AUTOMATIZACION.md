@@ -3,6 +3,18 @@
 Esta guía explica cómo hacer que **cada cambio se publique automáticamente**
 en Vercel y Firebase sin tener que subir archivos a mano.
 
+## 🔗 Enlaces del proyecto
+
+| Recurso | Dirección |
+|---|---|
+| App publicada | https://estacionamiento-kappa.vercel.app/ |
+| Repositorio GitHub | https://github.com/OmanThc/yeisonapp |
+| Proyecto Firebase | `yeison-app-84d5d` |
+| Panel de Vercel | https://vercel.com/dashboard |
+
+> ✅ **Automatización activa:** Vercel está conectado a `OmanThc/yeisonapp`.
+> Cada `git push` a la rama `main` publica la nueva versión en ~1 minuto.
+
 ---
 
 ## El flujo
