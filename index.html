@@ -187,10 +187,7 @@
                 📅 <span>Mes(es) que estás cancelando:</span>
               </span>
               <div class="flex gap-1">
-                <button type="button" onclick="cambiarAnoReporte(2023)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2023">2023</button>
-                <button type="button" onclick="cambiarAnoReporte(2024)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2024">2024</button>
-                <button type="button" onclick="cambiarAnoReporte(2025)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold bg-indigo-600 text-white" data-ano="2025">2025</button>
-                <button type="button" onclick="cambiarAnoReporte(2026)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2026">2026</button>
+                <button type="button" onclick="cambiarAnoReporte(2026)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold bg-indigo-600 text-white" data-ano="2026">2026</button>
                 <button type="button" onclick="cambiarAnoReporte(2027)" class="btn-ano-reg px-2 py-1 rounded-lg font-mono font-bold border border-slate-200 bg-white" data-ano="2027">2027</button>
               </div>
             </div>
@@ -707,10 +704,7 @@
           <div>
             <label class="block font-semibold mb-1">Año de Cuota</label>
             <select id="man-ano" class="w-full p-2 bg-slate-50 border rounded-xl">
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025" selected>2025</option>
-              <option value="2026">2026</option>
+              <option value="2026" selected>2026</option>
               <option value="2027">2027</option>
             </select>
           </div>
@@ -815,8 +809,8 @@
     let adminPin = '123456';
     let isAdminAutenticado = false;
     let pestanaActual = 'reportar';
-    let anoSeleccionadoReporte = 2025;
-    let mesesSeleccionadosReporte = ['2025-01'];
+    let anoSeleccionadoReporte = ANO_ACTUAL;
+    let mesesSeleccionadosReporte = [`${ANO_ACTUAL}-01`];
     let fotoDataUrl = null;
     let pagoEnRevision = null;
     let montoCalculadoReporte = 15.0;
