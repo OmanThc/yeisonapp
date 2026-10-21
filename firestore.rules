@@ -3,7 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /pagos/{pagoId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if !pagoId.matches('pago-0.*');
+      allow delete: if true;
     }
 
     match /configuracion/{docId} {

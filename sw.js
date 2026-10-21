@@ -1,5 +1,5 @@
 /* Service Worker: permite que la app cargue sin conexión y sea instalable en Chrome */
-const CACHE_NAME = 'estacionamiento-maroa-v7';
+const CACHE_NAME = 'estacionamiento-maroa-v8';
 
 const APP_SHELL = [
   './',

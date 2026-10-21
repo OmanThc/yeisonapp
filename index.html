@@ -337,6 +337,7 @@
         <div class="flex items-center gap-2">
           <span>💾</span>
           <span id="badge-estado-servidor" class="font-semibold text-slate-700">Modo Local Activo (Almacenamiento Seguro)</span>
+          <span id="version-app" class="font-mono text-slate-400" title="Versión de la app">v1.2</span>
         </div>
         <div class="flex items-center gap-2">
           <button onclick="abrirModalCambiarPin()" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg transition-colors flex items-center gap-1.5">
@@ -1042,6 +1043,7 @@
         telefono_origen: '0412-5551234',
         banco_origen: 'Banco Mercantil',
         estado: 'Aprobado',
+        esEjemplo: true,
         foto_url: generarSvgVoucher('Carlos E. Mendoza', '3-B', '0003', '782910', 135.0)
       },
       {
@@ -1057,6 +1059,7 @@
         telefono_origen: '0412-5551234',
         banco_origen: 'Banco Mercantil',
         estado: 'Pendiente',
+        esEjemplo: true,
         foto_url: generarSvgVoucher('Carlos E. Mendoza', '3-B', '0003', '948201', 15.0)
       },
       {
@@ -1072,9 +1075,15 @@
         telefono_origen: '0414-2391024',
         banco_origen: 'Banco Banesco',
         estado: 'Aprobado',
+        esEjemplo: true,
         foto_url: generarSvgVoucher('Ana Gómez', '4-B', '0018', '849201', 75.0)
       }
     ];
+
+    // Ids de los datos de ejemplo: NUNCA se suben a la nube.
+    // Así, un dispositivo que ya los tiene guardados no puede "resucitarlos"
+    // en el servidor aunque la junta los haya borrado desde otro equipo.
+    const IDS_SEMILLA = new Set(SEED_INICIAL.map(p => String(p.id)));
 
     // Estado en ejecución
     let listaPagos = [];
@@ -1096,6 +1105,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
+    const VERSION_APP = '1.2';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -1108,7 +1118,7 @@
     let unsubscribeFichas = null;      // escucha de la colección 'fichas'
     let idsPagosEnNube = new Set();    // ids que ya se sabían (para detectar nuevos)
     let pagosEnviadosLocal = new Set();// ids creados aquí que aún no confirman la nube
-    let idsSemilla = new Set();        // ids de los datos de ejemplo: nunca se suben
+    let idsSemilla = new Set(IDS_SEMILLA); // ids de los datos de ejemplo: nunca se suben
 
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyCSMsOCU5ETx6YiuvMoYZv0DFIoWhC2GDk",
@@ -1213,13 +1223,14 @@
               const soloLocal = listaPagos.filter(p =>
                 !idsAhora.has(String(p.id)) &&
                 !idsEliminados.has(String(p.id)) &&
-                !idsSemilla.has(String(p.id)));
+                !idsSemilla.has(String(p.id)) &&
+                !p.esEjemplo);
               listaPagos = [...nube, ...soloLocal];
               soloLocal.forEach(p => subirPagoNube(p));
             } else if (listaPagos.length > 0 && !desdeCache) {
               // Nube vacía (primer uso real): se sube lo local, sin los ejemplos
               listaPagos
-                .filter(p => !idsSemilla.has(String(p.id)))
+                .filter(p => !idsSemilla.has(String(p.id)) && !p.esEjemplo)
                 .forEach(p => subirPagoNube(p));
             }
           } else {
@@ -1323,6 +1334,10 @@
 
     // Inicializar aplicación
     function iniciarApp() {
+      // Versión visible de la app (para saber si se actualizó)
+      const vEl = document.getElementById('version-app');
+      if (vEl) vEl.textContent = 'v' + VERSION_APP;
+
       // Conectar al servidor (Firebase) antes de cargar datos
       initFirebase();
 
@@ -1337,13 +1352,11 @@
           listaPagos = JSON.parse(pagosGuardados);
         } catch (e) {
           listaPagos = SEED_INICIAL.map(p => ({ ...p }));
-          idsSemilla = new Set(listaPagos.map(p => String(p.id)));
         }
       } else {
         // Datos de ejemplo SOLO para este dispositivo: nunca se suben a la nube
         // (así no resucitan pagos que la junta ya borró en otro dispositivo)
         listaPagos = SEED_INICIAL.map(p => ({ ...p }));
-        idsSemilla = new Set(listaPagos.map(p => String(p.id)));
         guardarPagosEnStorage();
       }
 
