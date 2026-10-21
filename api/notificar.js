@@ -29,6 +29,7 @@ const FCM = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/datastore';
 const MAX_AVISOS = 10;              // máximo de pagos avisados por llamada
 const LIMITE_LLAMADAS = 20;         // por minuto y por instancia (evita abuso)
+const SITIO_WEB = process.env.SITIO_WEB || 'https://estacionamiento-kappa.vercel.app';
 
 // ---------------------------------------------------------------------------
 // Token de acceso de Google (JWT firmado con la clave de la cuenta de servicio)
@@ -181,23 +182,30 @@ async function enviarPush(token, fcmToken, aviso) {
   const datos = {};
   for (const [k, v] of Object.entries(aviso.data || {})) datos[k] = String(v);
 
+  // FCM v1 EXIGE indicar el destinatario: sin `message.token` la API
+  // responde 400 "Recipient of the message is not set".
+  const cuerpo = {
+    message: {
+      token: fcmToken,
+      notification: { title: aviso.titulo, body: aviso.cuerpo },
+      data: datos,
+      webpush: {
+        fcmOptions: { link: aviso.enlace || SITIO_WEB },
+        notification: {
+          title: aviso.titulo,
+          body: aviso.cuerpo,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag: aviso.data.id || 'pago-nuevo'
+        }
+      }
+    }
+  };
+
   const r = await fetch(FCM, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: {
-        notification: { title: aviso.titulo, body: aviso.cuerpo },
-        data: datos,
-        webpush: {
-          fcmOptions: { link: aviso.enlace || '/' },
-          notification: {
-            icon: '/icons/icon-192.png',
-            badge: '/icons/icon-192.png',
-            tag: aviso.data.id || 'pago-nuevo'
-          }
-        }
-      }
-    })
+    body: JSON.stringify(cuerpo)
   });
   const texto = await r.text();
   if (!r.ok) {
@@ -266,7 +274,7 @@ module.exports = async (req, res) => {
       const aviso = {
         titulo: '🧪 Aviso de prueba',
         cuerpo: 'Así llega el aviso cuando se registra un pago, incluso con la app cerrada.',
-        enlace: '/?vista=admin',
+        enlace: SITIO_WEB + '/?vista=admin',
         data: { id: 'prueba_' + Date.now(), tipo: 'prueba' }
       };
       const resultados = await Promise.allSettled(tokens.map((t) => enviarPush(token, t, aviso)));
@@ -339,7 +347,7 @@ module.exports = async (req, res) => {
       const aviso = {
         titulo: '💳 Nuevo pago reportado',
         cuerpo: `${nombre}${apto ? ` — Apto ${apto}` : ''}${puesto ? ` · Puesto ${puesto}` : ''} — $${monto.toFixed(2)}`,
-        enlace: '/?vista=admin',
+        enlace: SITIO_WEB + '/?vista=admin',
         data: { id: pago.id, nombre, monto, tipo: 'pago_nuevo' }
       };
 
