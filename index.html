@@ -3394,6 +3394,8 @@
           navigator.serviceWorker.ready,
           new Promise(r => setTimeout(r, 5000))
         ]);
+        // Se vuelve a leer el registro para asegurar que ya esté "activo"
+        registro = (await navigator.serviceWorker.getRegistration()) || registro;
 
         const opciones = { serviceWorkerRegistration: registro };
         if (VAPID_PUBLIC_KEY) opciones.vapidKey = VAPID_PUBLIC_KEY;
