@@ -1,5 +1,6 @@
-/* Service Worker: permite que la app cargue sin conexión y sea instalable en Chrome */
-const CACHE_NAME = 'estacionamiento-maroa-v9';
+/* Service Worker: permite que la app cargue sin conexión y sea instalable en Chrome.
+   También recibe los avisos push de Firebase (FCM) cuando la app está cerrada. */
+const CACHE_NAME = 'estacionamiento-maroa-v10';
 
 const APP_SHELL = [
   './',
@@ -74,5 +75,57 @@ self.addEventListener('fetch', (event) => {
         return response;
       });
     }).catch(() => caches.match('./index.html'))
+  );
+});
+
+// ===========================================================================
+// AVISOS PUSH (Firebase Cloud Messaging)
+// Este es el ÚNICO service worker registrado, así que es el que recibe el
+// evento "push" cuando la app está en segundo plano o totalmente cerrada.
+// ===========================================================================
+self.addEventListener('push', (event) => {
+  let datos = {};
+  let notificacion = {};
+
+  try {
+    const crudo = event.data ? event.data.json() : {};
+    datos = crudo.data || {};
+    notificacion = crudo.notification || {};
+  } catch (e) {
+    try {
+      datos = event.data ? event.data.text() : {};
+    } catch (e2) { /* sin datos */ }
+  }
+
+  const titulo = notificacion.title || datos.title || '💳 Nuevo pago reportado';
+  const cuerpo = notificacion.body || datos.body || 'Un residente reportó un pago de estacionamiento.';
+
+  event.waitUntil(
+    self.registration.showNotification(titulo, {
+      body: cuerpo,
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: datos.id || 'pago-nuevo',
+      renotify: true,
+      vibrate: [120, 60, 120],
+      data: { url: './index.html?vista=admin', id: datos.id || '' }
+    })
+  );
+});
+
+// Al tocar el aviso, abrir la app (en el panel del administrador si puede)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const destino = (event.notification.data && event.notification.data.url) || './index.html?vista=admin';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientes) => {
+      for (const c of clientes) {
+        if ('focus' in c) {
+          c.postMessage({ tipo: 'aviso-pago', id: (event.notification.data && event.notification.data.id) || '' });
+          return c.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(destino);
+    })
   );
 });

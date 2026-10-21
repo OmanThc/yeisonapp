@@ -720,11 +720,12 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button type="button" onclick="activarNotificaciones()" class="px-4 py-2.5 text-white rounded-xl font-bold" style="background:#047857">🔔 Activar Notificaciones</button>
-            <button type="button" onclick="probarNotificacion()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">🧪 Enviar Notificación de Prueba</button>
+            <button type="button" onclick="probarNotificacion()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">🧪 Aviso en la App</button>
+            <button type="button" onclick="probarPushReal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">📨 Push Real (app cerrada)</button>
             <button type="button" onclick="desactivarNotificaciones()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-semibold">🔕 Desactivar</button>
           </div>
           <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
-            <b>Nota técnica:</b> los avisos llegan al instante cuando la app está abierta. Para recibirlos con la app cerrada (segundo plano) hace falta configurar una <b>clave VAPID</b> en Firebase Console (ver README). Sin ella, igual se muestran las alertas internas en el panel.
+            <b>Cómo funciona:</b> la app se suscribe a los avisos y este dispositivo queda registrado en la nube. Cuando se registra un pago, el servidor envía un <b>push real</b> a todos los dispositivos suscritos, así que el aviso llega <b>también con la app cerrada</b>. Actívalo en cada teléfono/tablet que quieras que avise.
           </div>
         </div>
 
@@ -1104,7 +1105,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
-    const VERSION_APP = '1.2';   // súbela al publicar cambios para ver si tu app se actualizó
+    const VERSION_APP = '1.3';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -1155,6 +1156,11 @@
       // Marcarlo como "enviado desde aquí" para no notificarse a sí mismo
       pagosEnviadosLocal.add(String(pago.id));
       dbFirebase.collection('pagos').doc(String(pago.id)).set({ ...pago })
+        .then(() => {
+          // Aviso push a los demás dispositivos (también con la app cerrada).
+          // El servidor solo avisa de pagos que aún no se hayan notificado.
+          pedirAvisoPush(pago);
+        })
         .catch(err => console.warn('No se pudo sincronizar un pago con la nube:', err.message));
     }
 
@@ -1339,6 +1345,10 @@
 
       // Conectar al servidor (Firebase) antes de cargar datos
       initFirebase();
+
+      // Si este dispositivo ya tenía las notificaciones activadas, se renueva
+      // el token push (por si el navegador lo cambió o es un equipo nuevo).
+      renovarTokenPushSiAplica();
 
       // Cargar PIN
       const pinGuardado = localStorage.getItem(STORAGE_KEY_PIN);
@@ -3265,9 +3275,15 @@
     // NOTIFICACIONES: avisan a la junta cuando un residente paga
     // ==============================================================
     const STORAGE_KEY_TOKEN_NOTIF = 'autopago_notif_token_v1';
-    const VAPID_PUBLIC_KEY = ''; // Opcional: pegar la clave VAPID de Firebase para avisos con la app cerrada
+    // No hace falta pegar una clave VAPID: el SDK de Firebase usa por
+    // defecto el certificado web push del propio proyecto. Si algún día se
+    // cambia, basta con poner aquí la clave de Firebase Console.
+    const VAPID_PUBLIC_KEY = '';   // opcional
+    // Función serverless que envía el aviso push (Vercel → Firebase Cloud Messaging)
+    const URL_API_NOTIFICAR = 'https://estacionamiento-kappa.vercel.app/api/notificar';
     let messagingFirebase = null;
     let tokenNotificaciones = null;
+    let listenerMensajesPuesto = false;
 
     function notificacionesSoportadas() {
       return typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
@@ -3286,6 +3302,9 @@
       if (activo) {
         box.className = 'p-3.5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900';
         box.innerHTML = '✅ Notificaciones <b>activadas</b> en este dispositivo.' +
+          (tokenNotificaciones
+            ? '<br>📨 <b>Push real activo</b>: los avisos llegan también con la app cerrada.'
+            : '<br><span class="text-amber-700">Sin push: los avisos solo sonarían con la app abierta. Vuelve a pulsar "Activar Notificaciones".</span>') +
           (tokenNotificaciones ? '<br><span class="text-[10px] font-mono break-all">Token: ' + tokenNotificaciones.slice(0, 24) + '…</span>' : '');
       } else if (permiso === 'denied') {
         box.className = 'p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900';
@@ -3320,17 +3339,49 @@
     }
 
     async function registrarTokenNotificaciones() {
-      if (!VAPID_PUBLIC_KEY) return null;
       if (typeof firebase === 'undefined' || !firebase.messaging) return null;
       try {
         if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-        messagingFirebase = firebase.messaging();
-        messagingFirebase.onMessage((payload) => {
-          const n = payload.notification || {};
-          mostrarToast(n.title || '💳 Nuevo pago reportado', '🔔');
-          if (document.visibilityState === 'visible') refrescarVistaActual();
-        });
-        const token = await messagingFirebase.getToken({ vapidKey: VAPID_PUBLIC_KEY });
+        if (!messagingFirebase) messagingFirebase = firebase.messaging();
+
+        if (!listenerMensajesPuesto) {
+          // Mensajes que llegan con la app abierta: se muestra el aviso dentro
+          messagingFirebase.onMessage((payload) => {
+            const n = payload.notification || {};
+            const d = payload.data || {};
+            mostrarToast(n.title || '💳 Nuevo pago reportado', '🔔');
+            if (document.visibilityState === 'visible') refrescarVistaActual();
+            // Si la app está en segundo plano, además se muestra el aviso del
+            // sistema (si no, el usuario no vería nada).
+            if (document.visibilityState !== 'visible' && Notification.permission === 'granted') {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification(n.title || '💳 Nuevo pago reportado', {
+                  body: n.body || 'Un residente reportó un pago de estacionamiento.',
+                  icon: 'icons/icon-192.png',
+                  badge: 'icons/icon-192.png',
+                  tag: d.id || 'pago-nuevo',
+                  data: { url: './index.html?vista=admin', id: d.id || '' }
+                });
+              }).catch(() => {});
+            }
+          });
+          listenerMensajesPuesto = true;
+        }
+
+        // El service worker debe estar activo para poder recibir los push
+        let registro = await navigator.serviceWorker.getRegistration();
+        if (!registro) {
+          registro = await navigator.serviceWorker.register('sw.js', { scope: './' });
+        }
+        await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise(r => setTimeout(r, 5000))
+        ]);
+
+        const opciones = { serviceWorkerRegistration: registro };
+        if (VAPID_PUBLIC_KEY) opciones.vapidKey = VAPID_PUBLIC_KEY;
+
+        const token = await messagingFirebase.getToken(opciones);
         if (token) {
           tokenNotificaciones = token;
           localStorage.setItem(STORAGE_KEY_TOKEN_NOTIF, token);
@@ -3338,14 +3389,32 @@
             await dbFirebase.collection('suscripciones').doc(token).set({
               token,
               creado: new Date().toISOString(),
-              dispositivo: navigator.userAgent.slice(0, 180)
-            });
+              dispositivo: navigator.userAgent.slice(0, 180),
+              activo: true
+            }, { merge: true });
           }
         }
         return token;
       } catch (e) {
         console.warn('No se pudo registrar el token de notificaciones:', e.message);
         return null;
+      }
+    }
+
+    // Avisa al servidor que hay un pago nuevo: la función serverless envía
+    // el push a todos los dispositivos suscritos (incluso con la app cerrada).
+    async function pedirAvisoPush(pago) {
+      try {
+        const r = await fetch(URL_API_NOTIFICAR, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: pago && pago.id ? pago.id : '' })
+        });
+        if (!r.ok) console.warn('Aviso push no enviado:', r.status);
+        return r.ok;
+      } catch (e) {
+        console.warn('No se pudo pedir el aviso push:', e.message);
+        return false;
       }
     }
 
@@ -3357,6 +3426,11 @@
       if (isAdminAutenticado) {
         mostrarToast(`${pago.nombre} pagó $${Number(pago.monto).toFixed(2)}`, '🔔');
       }
+
+      // La notificación del sistema (la que se ve fuera de la app) llega por
+      // push de Firebase. Este camino directo solo se usa como respaldo cuando
+      // este dispositivo no tiene push activo, para no mostrar dos avisos.
+      if (tokenNotificaciones) return;
 
       if (notificacionesSoportadas() && Notification.permission === 'granted' && localStorage.getItem('autopago_notif_activas') === 'true') {
         try {
@@ -3391,6 +3465,30 @@
         monto: Number(configuracion.cuota) || 15
       });
       mostrarToast('Notificación de prueba enviada', '🧪');
+    }
+
+    // Prueba del push real: pide al servidor que envíe un aviso a este
+    // dispositivo (y a todos los suscritos), como si fuera un pago nuevo.
+    async function probarPushReal() {
+      if (!tokenNotificaciones) {
+        mostrarToast('Primero activa las notificaciones en este dispositivo', '⚠️');
+        return;
+      }
+      try {
+        const r = await fetch(URL_API_NOTIFICAR, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prueba: true })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.ok) {
+          mostrarToast(`Push enviado a ${d.enviados || 0} dispositivo(s)`, '📨');
+        } else {
+          mostrarToast('No se pudo enviar el push: ' + (d.error || r.status), '⚠️');
+        }
+      } catch (e) {
+        mostrarToast('No se pudo enviar el push', '⚠️');
+      }
     }
 
     // ==============================================================
@@ -3518,6 +3616,24 @@
           .then(() => console.log('Service Worker registrado.'))
           .catch(err => console.warn('No se pudo registrar el Service Worker:', err));
       });
+    }
+
+    // Renueva el token push de este dispositivo si ya tenía las notificaciones
+    // activadas (se ejecuta al abrir la app, con un pequeño margen para que
+    // el Service Worker termine de activarse).
+    function renovarTokenPushSiAplica() {
+      setTimeout(async () => {
+        try {
+          if (!notificacionesSoportadas()) return;
+          if (Notification.permission !== 'granted') return;
+          if (localStorage.getItem('autopago_notif_activas') !== 'true') return;
+          const token = await registrarTokenNotificaciones();
+          if (token) {
+            actualizarEstadoNotificaciones();
+            console.log('Token push renovado en este dispositivo.');
+          }
+        } catch (e) { /* silencioso */ }
+      }, 2500);
     }
 
     // Iniciar al cargar la página
