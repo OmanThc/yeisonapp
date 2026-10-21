@@ -11,4 +11,6 @@ node_modules/
 # Configuración de herramientas
 .vercel/
 .firebase/
+.firebase-cli/
+node_modules/
 *.log

@@ -38,7 +38,29 @@ local y sincroniza al reconectar.
 | `fichas` | Historial de fichas descargadas/compartidas por la junta |
 
 ### Reglas de seguridad (obligatorio publicarlas)
-En **Firebase Console → Firestore Database → Reglas**, pega esto y pulsa **Publish**:
+
+Hay dos formas de publicarlas. **Opción A (recomendada, sin copiar a mano):**
+
+#### Opción A — Firebase CLI (sin errores de formato)
+
+```bash
+# 1. Instalar la CLI (una sola vez)
+npm install -g firebase-tools
+
+# 2. Autorizar tu cuenta de Google
+firebase login
+
+# 3. Publicar las reglas (desde esta carpeta)
+firebase deploy --only firestore:rules --project yeison-app-84d5d
+```
+
+El archivo `.firebaserc` ya deja `yeison-app-84d5d` como proyecto por defecto,
+así que también sirve: `firebase deploy --only firestore:rules`.
+
+#### Opción B — Firebase Console (manual)
+
+En **Firebase Console → Firestore Database → Reglas**, borra todo el contenido,
+pega el bloque de abajo y pulsa **Publish**:
 
 ```
 rules_version = '2';
@@ -60,6 +82,10 @@ service cloud.firestore {
 }
 ```
 
+> 💡 **Importante:** el editor de reglas de Firebase **no acepta comentarios
+> `//`**. Si copias el bloque con comentarios da `Parse error`. Por eso el
+> bloque de arriba va limpio, y el archivo `firestore.rules` del repo también.
+
 > ⚠️ Con `allow read, write: if true` cualquier persona con la URL podría
 > leer/borrar datos. Es aceptable para uso interno de la junta. Para mayor
 > seguridad, activa **Firebase Authentication** (correo/contraseña) y cambia
@@ -68,6 +94,7 @@ service cloud.firestore {
 ### Nota sobre el modo de prueba
 Si la base fue creada en **modo de prueba (test mode)**, las escrituras dejan
 de funcionar a los **30 días**. Publica las reglas de arriba antes de esa fecha.
+Las reglas ya están publicadas (verificado el 21/10/2026).
 
 ## Panel del Administrador
 
