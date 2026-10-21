@@ -1100,6 +1100,16 @@
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
 
+    // ---- Sincronización en tiempo real (Firestore onSnapshot) ----
+    // Con estos listeners, un pago registrado en el celular aparece al
+    // instante en la tablet, la computadora o el otro celular, sin recargar.
+    let unsubscribePagos = null;      // escucha de la colección 'pagos'
+    let unsubscribeConfig = null;      // escucha del doc 'configuracion/general'
+    let unsubscribeFichas = null;      // escucha de la colección 'fichas'
+    let idsPagosEnNube = new Set();    // ids que ya se sabían (para detectar nuevos)
+    let pagosEnviadosLocal = new Set();// ids creados aquí que aún no confirman la nube
+    let idsSemilla = new Set();        // ids de los datos de ejemplo: nunca se suben
+
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyCSMsOCU5ETx6YiuvMoYZv0DFIoWhC2GDk",
       authDomain: "yeison-app-84d5d.firebaseapp.com",
@@ -1133,15 +1143,31 @@
     // Subir/actualizar un pago a la nube
     function subirPagoNube(pago) {
       if (!dbFirebase || !pago || !pago.id) return;
+      // Marcarlo como "enviado desde aquí" para no notificarse a sí mismo
+      pagosEnviadosLocal.add(String(pago.id));
       dbFirebase.collection('pagos').doc(String(pago.id)).set({ ...pago })
         .catch(err => console.warn('No se pudo sincronizar un pago con la nube:', err.message));
     }
 
     // Borrar un pago de la nube
+    // Se marca como 'eliminado' (borrado lógico) en vez de borrarse el
+    // documento: así el resto de dispositivos saben que ya no debe
+    // reaparecer y no lo "resucitan" al volver a sincronizar.
     function borrarPagoNube(id) {
       if (!dbFirebase) return;
-      dbFirebase.collection('pagos').doc(String(id)).delete()
-        .catch(err => console.warn('No se pudo borrar en la nube:', err.message));
+      const ref = dbFirebase.collection('pagos').doc(String(id));
+      ref.get().then(doc => {
+        if (doc.exists) {
+          const datos = doc.data() || {};
+          return ref.set({
+            ...datos,
+            id: String(id),
+            eliminado: true,
+            fecha_eliminacion: new Date().toISOString()
+          });
+        }
+        return null;
+      }).catch(err => console.warn('No se pudo borrar en la nube:', err.message));
     }
 
     // Traer todos los pagos desde la nube (null si falla → modo local)
@@ -1149,46 +1175,133 @@
       if (!dbFirebase) return null;
       try {
         const snap = await dbFirebase.collection('pagos').get();
-        return snap.docs.map(d => d.data()).filter(p => p && p.id);
+        return snap.docs.map(d => ({ ...d.data(), id: d.id }))
+          .filter(p => p && p.id && !p.eliminado);
       } catch (e) {
         console.warn('Firestore no respondió (revisa las reglas de seguridad):', e.message);
         return null;
       }
     }
 
-    // Cargar desde la nube al arrancar: fusiona con lo local (no pierde nada)
-    async function cargarPagosDesdeNube() {
+    // ==============================================================
+    // SINCRONIZACIÓN EN VIVO (Firestore onSnapshot)
+    // Un pago registrado en un dispositivo aparece al instante en todos
+    // los demás, sin recargar la página ni volver a entrar.
+    // ==============================================================
+
+    // ESCUCHA LOS PAGOS EN VIVO
+    function escucharPagosEnTiempoReal() {
       if (!dbFirebase) return;
-      const badge = document.getElementById('badge-estado-servidor');
-      const nube = await traerPagosNube();
+      if (unsubscribePagos) { unsubscribePagos(); unsubscribePagos = null; }
 
-      if (nube === null) {
-        if (badge) badge.textContent = '⚠️ Nube sin permisos — Modo Local (revisa reglas de Firestore)';
-        return;
-      }
+      unsubscribePagos = dbFirebase.collection('pagos').onSnapshot(
+        (snap) => {
+          const badge = document.getElementById('badge-estado-servidor');
+          const desdeCache = !!(snap.metadata && snap.metadata.fromCache);
+          const todos = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(p => p && p.id);
+          // Los que están marcados como eliminados NO se muestran
+          const idsAhora = new Set(todos.map(p => String(p.id)));
+          const idsEliminados = new Set(todos.filter(p => p.eliminado).map(p => String(p.id)));
+          const nube = todos.filter(p => !p.eliminado);
+          const yaSincronizado = primeraSyncNubeHecha;
 
-      // Detectar pagos que llegaron de otros dispositivos (para avisar a la junta)
-      const idsConocidos = new Set(listaPagos.map(p => String(p.id)));
-      const nuevosDeOtros = nube.filter(p => !idsConocidos.has(String(p.id)));
+          if (!yaSincronizado) {
+            // ---- Primera sincronización: la nube manda ----
+            if (nube.length > 0) {
+              // Hay datos reales en la nube: se descartan los ejemplos locales
+              // y se sube lo local que NO sea ejemplo y no esté ya en la nube.
+              const soloLocal = listaPagos.filter(p =>
+                !idsAhora.has(String(p.id)) &&
+                !idsEliminados.has(String(p.id)) &&
+                !idsSemilla.has(String(p.id)));
+              listaPagos = [...nube, ...soloLocal];
+              soloLocal.forEach(p => subirPagoNube(p));
+            } else if (listaPagos.length > 0 && !desdeCache) {
+              // Nube vacía (primer uso real): se sube lo local, sin los ejemplos
+              listaPagos
+                .filter(p => !idsSemilla.has(String(p.id)))
+                .forEach(p => subirPagoNube(p));
+            }
+          } else {
+            // ---- Cambio en vivo: la nube es la fuente de verdad ----
+            const nuevos = nube.filter(p =>
+              !idsPagosEnNube.has(String(p.id)) && !pagosEnviadosLocal.has(String(p.id)));
+            // Pagos creados en ESTE dispositivo que la nube aún no ha confirmado
+            const pendientes = listaPagos.filter(p =>
+              pagosEnviadosLocal.has(String(p.id)) && !idsAhora.has(String(p.id)));
 
-      if (nube.length > 0) {
-        const idsNube = new Set(nube.map(p => String(p.id)));
-        const soloLocal = listaPagos.filter(p => !idsNube.has(String(p.id)));
-        listaPagos = [...nube, ...soloLocal]; // la nube manda; lo local no se pierde
-        soloLocal.forEach(p => subirPagoNube(p));
-      } else if (listaPagos.length > 0) {
-        // Primera vez con la nube vacía: migrar todo lo local
-        listaPagos.forEach(p => subirPagoNube(p));
-      }
-      guardarPagosEnStorage();
-      if (badge) badge.textContent = '☁️ Servidor Firebase Conectado';
-      refrescarVistaActual();
+            listaPagos = [...nube, ...pendientes];
+            pendientes.forEach(p => subirPagoNube(p));
 
-      // Avisar de los pagos nuevos (solo si es la junta y ya cargó la primera vez)
-      if (primeraSyncNubeHecha) {
-        nuevosDeOtros.forEach(p => { if (p.estado === 'Pendiente') notificarPagoNuevo(p); });
-      }
-      primeraSyncNubeHecha = true;
+            // Avisar a la junta de los pagos que llegan de OTROS dispositivos
+            if (!desdeCache) {
+              nuevos.forEach(p => { if (p.estado === 'Pendiente') notificarPagoNuevo(p); });
+            }
+          }
+
+          idsPagosEnNube = idsAhora;
+          // Limpiar los que ya llegaron a la nube
+          pagosEnviadosLocal = new Set([...pagosEnviadosLocal].filter(id => !idsAhora.has(id)));
+
+          guardarPagosEnStorage();  // solo local (sin argumento) → no sube nada, no hay bucles
+          if (badge) badge.textContent = '🔄 En vivo — Sincronizado';
+          refrescarVistaActual();
+          primeraSyncNubeHecha = true;
+        },
+        (err) => {
+          console.warn('Se perdió la escucha en vivo de Firestore:', err.message);
+          const badge = document.getElementById('badge-estado-servidor');
+          if (badge) badge.textContent = '⚠️ Nube sin permisos — Modo Local (revisa reglas de Firestore)';
+        }
+      );
+    }
+
+    // ESCUCHA LA CONFIGURACIÓN EN VIVO (nombre, colores, cuota, ficha, banco)
+    function escucharConfiguracionEnTiempoReal() {
+      if (!dbFirebase) return;
+      if (unsubscribeConfig) { unsubscribeConfig(); unsubscribeConfig = null; }
+
+      unsubscribeConfig = dbFirebase.collection('configuracion').doc('general').onSnapshot(
+        (doc) => {
+          if (!doc.exists) return;   // en el SDK compat 'exists' es una propiedad, no un método
+          const datos = doc.data();
+          if (JSON.stringify(datos) === JSON.stringify(configuracion)) return;
+
+          aplicarConfiguracion(datos);
+          localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(configuracion));
+          // No pisar el formulario si el admin está escribiendo en él
+          if (!formularioConfigEnUso()) cargarFormularioConfiguracion();
+          refrescarFichaVisible();
+          mostrarToast('Configuración actualizada desde otro dispositivo', '🔄');
+        },
+        (err) => console.warn('No se pudo escuchar la configuración en vivo:', err.message)
+      );
+    }
+
+    // ESCUCHA EL HISTORIAL DE FICHAS EN VIVO
+    function escucharFichasEnTiempoReal() {
+      if (!dbFirebase) return;
+      if (unsubscribeFichas) { unsubscribeFichas(); unsubscribeFichas = null; }
+
+      unsubscribeFichas = dbFirebase.collection('fichas').onSnapshot(
+        (snap) => {
+          const deNube = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(f => f && f.id);
+          if (!deNube.length) return;
+          deNube.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+          historialFichas = deNube;
+          localStorage.setItem('autopago_fichas_v1', JSON.stringify(historialFichas));
+          renderizarHistorialFichas();
+        },
+        (err) => console.warn('No se pudo escuchar el historial de fichas en vivo:', err.message)
+      );
+    }
+
+    // ¿El admin está escribiendo en el formulario de configuración?
+    function formularioConfigEnUso() {
+      const sec = document.getElementById('subseccion-config');
+      if (!sec) return false;
+      const activo = document.activeElement;
+      return !!(activo && sec.contains(activo) && (activo.tagName === 'INPUT' || activo.tagName === 'TEXTAREA' || activo.tagName === 'SELECT'));
     }
 
     // Repintar la vista que el usuario tenga abierta
@@ -1199,7 +1312,12 @@
         if (subFichas && !subFichas.classList.contains('hidden')) {
           const inp = document.getElementById('input-busqueda-residente-admin');
           if (inp && inp.value) filtrarFichaAdmin(inp.value);
+          else refrescarFichaVisible();
         }
+        renderizarHistorialFichas();
+      } else if (pestanaActual === 'consultar') {
+        // La ficha del residente se repinta con los datos más recientes
+        refrescarFichaVisible();
       }
     }
 
@@ -1218,10 +1336,14 @@
         try {
           listaPagos = JSON.parse(pagosGuardados);
         } catch (e) {
-          listaPagos = SEED_INICIAL;
+          listaPagos = SEED_INICIAL.map(p => ({ ...p }));
+          idsSemilla = new Set(listaPagos.map(p => String(p.id)));
         }
       } else {
-        listaPagos = SEED_INICIAL;
+        // Datos de ejemplo SOLO para este dispositivo: nunca se suben a la nube
+        // (así no resucitan pagos que la junta ya borró en otro dispositivo)
+        listaPagos = SEED_INICIAL.map(p => ({ ...p }));
+        idsSemilla = new Set(listaPagos.map(p => String(p.id)));
         guardarPagosEnStorage();
       }
 
@@ -1259,9 +1381,20 @@
       } catch (e) { /* sin parámetros */ }
       navegarA(vistaInicial);
 
-      // Sincronizar con la nube (Firestore) en segundo plano
+      // Sincronizar con la nube (Firestore) en segundo plano y ESCUCHAR en vivo
       cargarConfiguracionDesdeNube();
-      cargarPagosDesdeNube();
+      escucharPagosEnTiempoReal();
+      escucharConfiguracionEnTiempoReal();
+      escucharFichasEnTiempoReal();
+
+      // Si la app vuelve a segundo plano, revisa si hubo cambios mientras tanto
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && dbFirebase) {
+          if (!unsubscribePagos) escucharPagosEnTiempoReal();
+          if (!unsubscribeConfig) escucharConfiguracionEnTiempoReal();
+          if (!unsubscribeFichas) escucharFichasEnTiempoReal();
+        }
+      });
     }
 
     function guardarPagosEnStorage(pagoModificado) {
@@ -2697,15 +2830,12 @@
     }
 
     async function renderizarHistorialFichas() {
-      const tbody = document.getElementById('tabla-historial-fichas-body')
-                 || document.getElementById('tabla-historial-fichas-admin-body');
-      if (!tbody) return;
-
-      // Intentar traer desde la nube; si falla, usar lo local
-      if (dbFirebase) {
+      // Los datos vienen del listener en vivo (historialFichas). Si no hay
+      // listener activo, se hace una lectura puntual a la nube.
+      if (dbFirebase && !unsubscribeFichas) {
         try {
           const snap = await dbFirebase.collection('fichas').get();
-          const deNube = snap.docs.map(d => d.data()).filter(f => f && f.id);
+          const deNube = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(f => f && f.id);
           if (deNube.length) {
             deNube.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
             historialFichas = deNube;
@@ -2714,23 +2844,30 @@
         } catch (e) { /* usa local */ }
       }
 
-      if (!historialFichas.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">Aún no se ha descargado ni compartido ninguna ficha.</td></tr>`;
-        return;
-      }
+      // Se dibuja en las DOS tablas (vista del residente y panel del admin)
+      const bodies = [
+        document.getElementById('tabla-historial-fichas-body'),
+        document.getElementById('tabla-historial-fichas-admin-body')
+      ].filter(Boolean);
 
-      tbody.innerHTML = historialFichas.map(f => `
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="py-3 px-4 font-mono text-slate-600">${f.fecha}</td>
-          <td class="py-3 px-4 font-bold text-slate-900">${f.nombre}</td>
-          <td class="py-3 px-4"><span class="font-bold text-slate-800">Apto ${f.apartamento}</span> · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${f.puesto}</span></td>
-          <td class="py-3 px-4 text-center font-mono">${f.ano}</td>
-          <td class="py-3 px-4 text-center font-bold">${f.sellados} / 12</td>
-          <td class="py-3 px-4 text-center">
-            <button onclick="buscarSugerenciaAdmin('${String(f.nombre).replace(/'/g, "\\'")}')" class="text-indigo-600 hover:underline font-semibold">Ver ficha</button>
-          </td>
-        </tr>
-      `).join('');
+      if (!bodies.length) return;
+
+      const html = !historialFichas.length
+        ? `<tr><td colspan="6" class="p-8 text-center text-slate-400">Aún no se ha descargado ni compartido ninguna ficha.</td></tr>`
+        : historialFichas.map(f => `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3 px-4 font-mono text-slate-600">${f.fecha}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">${f.nombre}</td>
+            <td class="py-3 px-4"><span class="font-bold text-slate-800">Apto ${f.apartamento}</span> · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${f.puesto}</span></td>
+            <td class="py-3 px-4 text-center font-mono">${f.ano}</td>
+            <td class="py-3 px-4 text-center font-bold">${f.sellados} / 12</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="buscarSugerenciaAdmin('${String(f.nombre).replace(/'/g, "\\'")}')" class="text-indigo-600 hover:underline font-semibold">Ver ficha</button>
+            </td>
+          </tr>
+        `).join('');
+
+      bodies.forEach(tb => { tb.innerHTML = html; });
     }
 
     function cargarHistorialFichasLocal() {
@@ -3179,7 +3316,7 @@
         messagingFirebase.onMessage((payload) => {
           const n = payload.notification || {};
           mostrarToast(n.title || '💳 Nuevo pago reportado', '🔔');
-          if (document.visibilityState === 'visible') cargarPagosDesdeNube();
+          if (document.visibilityState === 'visible') refrescarVistaActual();
         });
         const token = await messagingFirebase.getToken({ vapidKey: VAPID_PUBLIC_KEY });
         if (token) {

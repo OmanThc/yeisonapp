@@ -96,6 +96,34 @@ Si la base fue creada en **modo de prueba (test mode)**, las escrituras dejan
 de funcionar a los **30 días**. Publica las reglas de arriba antes de esa fecha.
 Las reglas ya están publicadas (verificado el 21/10/2026).
 
+## Sincronización en tiempo real (entre dispositivos)
+
+La app **escucha** Firestore en vivo (`onSnapshot`) en las 3 colecciones, así que
+todo cambio se refleja **al instante en todos los dispositivos**, sin recargar la
+página ni volver a iniciar sesión:
+
+| Colección | Qué se sincroniza en vivo |
+|---|---|
+| `pagos` | Pagos nuevos, **ediciones** (monto, estado, meses, comprobante) y **borrados** |
+| `configuracion/general` | Nombre de la app, colores, cuota, datos bancarios y ficha |
+| `fichas` | Historial de fichas descargadas/compartidas |
+
+La etiqueta superior muestra el estado:
+
+- `🔄 En vivo — Sincronizado` → conectado y escuchando cambios.
+- `⚠️ Nube sin permisos…` → las reglas de Firestore no están publicadas.
+
+### Detalles importantes
+
+- **Borrado lógico.** Al eliminar un pago se marca con `eliminado: true` en la nube
+  en vez de borrarse el documento. Así ningún otro dispositivo lo "resucita" al
+  volver a sincronizar. La app oculta esos registros automáticamente.
+- **Datos de ejemplo.** Los 3 pagos de demostración (Carlos E. Mendoza y
+  Ana Gómez Rondón) que se ven la primera vez en un dispositivo nuevo **nunca se
+  suben a la nube**: si la nube ya tiene pagos reales, mandan los de la nube.
+- **Sin conexión.** Si el dispositivo no tiene internet, la app guarda en local y
+  sube el cambio al reconectar (Firestore persiste la caché en el navegador).
+
 ## Panel del Administrador
 
 Además de **Conciliación de Pagos** e **Historial por Cliente**, el panel tiene:
