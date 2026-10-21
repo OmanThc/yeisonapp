@@ -135,6 +135,33 @@ async function borrarDocumento(token, coleccion, id) {
   if (!r.ok && r.status !== 404) throw new Error(`Borrado ${coleccion}/${id}: HTTP ${r.status}`);
 }
 
+// ---------------------------------------------------------------------------
+// Traza de la función: el plan Hobby de Vercel no guarda logs, así que cada
+// llamada deja su registro en la colección `notificaciones_debug` de Firestore.
+// ---------------------------------------------------------------------------
+async function logServidor(token, evento, extra) {
+  try {
+    const campos = {
+      evento: String(evento),
+      cuando: new Date().toISOString(),
+      origen: 'servidor',
+      suscriptores: '',
+      enviados: '',
+      fallos: '',
+      pendientes: '',
+      errores: '',
+      mensaje: ''
+    };
+    for (const [k, v] of Object.entries(extra || {})) {
+      if (v === null || v === undefined) continue;
+      const clave = String(k).slice(0, 60);
+      if (!(clave in campos)) continue;
+      campos[clave] = typeof v === 'object' ? JSON.stringify(v).slice(0, 800) : String(v).slice(0, 800);
+    }
+    await guardarDocumento(token, 'notificaciones_debug', 'srv_ultimo', campos);
+  } catch (e) { /* la traza nunca debe romper el envío */ }
+}
+
 // Lee el cuerpo de la petición (Vercel lo entrega ya parseado o como string)
 function leerCuerpo(req) {
   return new Promise((resolve) => {
@@ -232,6 +259,7 @@ module.exports = async (req, res) => {
     // 2) Aviso de prueba: no toca Firestore, solo comprueba el push real
     if (cuerpo && cuerpo.prueba === true) {
       if (!tokens.length) {
+        await logServidor(token, 'prueba_sin_suscriptores', { suscriptores: 0 });
         res.status(200).json({ ok: true, enviados: 0, motivo: 'no hay dispositivos suscritos' });
         return;
       }
@@ -243,6 +271,10 @@ module.exports = async (req, res) => {
       };
       const resultados = await Promise.allSettled(tokens.map((t) => enviarPush(token, t, aviso)));
       const ok = resultados.filter((r) => r.status === 'fulfilled').length;
+      const errores = resultados
+        .filter((r) => r.status === 'rejected')
+        .map((r) => String((r.reason && (r.reason.cuerpo || r.reason.message)) || '').slice(0, 200));
+      await logServidor(token, 'prueba_enviada', { suscriptores: tokens.length, enviados: ok, errores });
       res.status(200).json({ ok: true, prueba: true, suscriptores: tokens.length, enviados: ok });
       return;
     }
@@ -284,11 +316,13 @@ module.exports = async (req, res) => {
     const aAvisar = pagos.slice(0, MAX_AVISOS);
 
     if (!tokens.length) {
+      await logServidor(token, 'sin_suscriptores', { pendientes: aAvisar.length, ids: aAvisar.map((p) => p.id) });
       res.status(200).json({ ok: true, enviados: 0, motivo: 'no hay dispositivos suscritos', pendientes: aAvisar.length });
       return;
     }
 
     if (seco) {
+      await logServidor(token, 'modo_seco', { suscriptores: tokens.length, pendientes: aAvisar.map((p) => p.id) });
       res.status(200).json({
         ok: true, seco: true, suscriptores: tokens.length,
         pendientes: aAvisar.map((p) => p.id)
@@ -332,11 +366,21 @@ module.exports = async (req, res) => {
       }
     }
 
+    await logServidor(token, 'avivos_enviados', {
+      suscriptores: tokens.length,
+      avisos: aAvisar.length,
+      enviados,
+      fallos,
+      quedan: Math.max(0, pagos.length - aAvisar.length)
+    });
+
     res.status(200).json({
       ok: true, suscriptores: tokens.length, avisos: aAvisar.length,
       enviados, fallos, quedan: Math.max(0, pagos.length - aAvisar.length)
     });
   } catch (e) {
-    res.status(500).json({ ok: false, error: String(e && e.message ? e.message : e) });
+    const mensaje = String(e && e.message ? e.message : e);
+    try { await logServidor(await tokenAcceso(), 'error', { mensaje }); } catch (e2) { /* silencioso */ }
+    res.status(500).json({ ok: false, error: mensaje });
   }
 };

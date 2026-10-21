@@ -19,5 +19,10 @@ service cloud.firestore {
     match /fichas/{docId} {
       allow read, write: if true;
     }
+
+    // Trazas de diagnóstico de las notificaciones (app y servidor)
+    match /notificaciones_debug/{docId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -165,16 +165,10 @@
             <input type="text" id="reg-nombre" required placeholder="Ej. Carlos Mendoza" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
           </div>
 
-          <!-- Apartamento y Puesto (Sin placa) -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">Apartamento *</label>
-              <input type="text" id="reg-apto" required placeholder="Ej. 3-B" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-semibold">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-700 mb-1.5">Nº de Puesto *</label>
-              <input type="text" id="reg-puesto" required placeholder="Ej. 0003" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-semibold">
-            </div>
+          <!-- Apartamento (el Nº de Puesto lo asigna la junta en el panel admin) -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1.5">Apartamento *</label>
+            <input type="text" id="reg-apto" required placeholder="Ej. 3-B" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-semibold">
           </div>
 
           <!-- SELECCIÓN DE AÑO Y MESES A SELLAR -->
@@ -956,8 +950,8 @@
             <input type="text" id="edit-apto" required class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
           </div>
           <div>
-            <label class="block font-semibold mb-1">Nº Puesto *</label>
-            <input type="text" id="edit-puesto" required class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+            <label class="block font-semibold mb-1">Nº Puesto (opcional)</label>
+            <input type="text" id="edit-puesto" class="w-full p-2 bg-slate-50 border rounded-xl font-bold" placeholder="Ej. 0033">
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -1106,7 +1100,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
-    const VERSION_APP = '1.3';   // súbela al publicar cambios para ver si tu app se actualizó
+    const VERSION_APP = '1.4';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -1349,6 +1343,13 @@
 
       // Si este dispositivo ya tenía las notificaciones activadas, se renueva
       // el token push (por si el navegador lo cambió o es un equipo nuevo).
+      // Además se recupera el token guardado: así la app sabe enseguida si
+      // este móvil ya está suscrito a los avisos, aunque el push aún no haya
+      // sido renovado en esta sesión.
+      try {
+        const tokenGuardado = localStorage.getItem(STORAGE_KEY_TOKEN_NOTIF);
+        if (tokenGuardado) tokenNotificaciones = tokenGuardado;
+      } catch (e) { /* localStorage puede estar bloqueado */ }
       renovarTokenPushSiAplica();
 
       // Cargar PIN
@@ -1610,7 +1611,9 @@
 
       const nombre = document.getElementById('reg-nombre').value.trim();
       const apto = document.getElementById('reg-apto').value.trim().toUpperCase();
-      const puesto = document.getElementById('reg-puesto').value.trim().toUpperCase();
+      // El resident ya NO escribe el Nº de Puesto: lo asigna la junta desde el
+      // panel de administración. Se guarda vacío y la ficha agrupa por Apartamento.
+      const puesto = '';
       const monto = montoCalculadoReporte || (Number(configuracion.cuota) || 15.0) * mesesSeleccionadosReporte.length;
       const fecha = document.getElementById('reg-fecha').value;
       const obs = document.getElementById('reg-observaciones').value.trim();
@@ -1636,7 +1639,7 @@
       guardarPagosEnStorage(nuevoPago);
 
       mostrarToast('¡Comprobante recibido con éxito!', '🎉');
-      alert(`¡Gracias ${nombre}! Tu reporte ha sido registrado para el Puesto ${puesto}. La administración confirmará el Pago Móvil.`);
+      alert(`¡Gracias ${nombre}! Tu reporte ha sido registrado para el Apartamento ${apto}. La administración confirmará el Pago Móvil.`);
 
       // Resetear formulario
       e.target.reset();
@@ -1720,6 +1723,22 @@
       filtrarFichaResidente(query, 'contenedor-ficha-admin');
     }
 
+    // Clave de agrupación de un pago en la ficha:
+    // - si tiene Nº de Puesto asignado por la junta → se agrupa por puesto
+    // - si no → se agrupa por Apartamento (el resident ya no escribe el puesto)
+    function claveGrupoPago(p) {
+      const pu = String((p && p.puesto) || '').trim().toUpperCase();
+      if (pu) return 'P:' + pu;
+      return 'A:' + String((p && p.apartamento) || '').trim().toUpperCase();
+    }
+
+    // Texto legible del puesto (o del apartamento si no hay puesto asignado)
+    function etiquetaPuesto(p) {
+      const pu = String((p && p.puesto) || '').trim();
+      if (!pu) return '';
+      return 'P-' + (pu.replace(/[^0-9]/g, '').padStart(4, '0') || pu);
+    }
+
     function filtrarFichaResidente(query, contenedorId = 'contenedor-tarjeta-ficha') {
       if (!requiereAdminFicha()) return;
       const contenedor = document.getElementById(contenedorId);
@@ -1734,7 +1753,7 @@
       // Encontrar todos los pagos que coincidan (búsqueda por palabras: todos los términos deben aparecer)
       const palabras = q.split(/\s+/).filter(Boolean);
       const coincidentes = listaPagos.filter(p => {
-        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto || ''}`.toLowerCase();
         return palabras.every(pal => campos.includes(pal));
       });
 
@@ -1751,8 +1770,10 @@
 
       // Tomar los datos del residente principal encontrado
       const principal = coincidentes[0];
-      const puestoFormat = principal.puesto.replace(/[^0-9]/g, '').padStart(4, '0') || principal.puesto;
-      const pagosDelPuesto = listaPagos.filter(p => p.puesto.toUpperCase() === principal.puesto.toUpperCase());
+      const puestoRaw = String(principal.puesto || '').trim();
+      const puestoFormat = puestoRaw ? (puestoRaw.replace(/[^0-9]/g, '').padStart(4, '0') || puestoRaw) : '';
+      const claveGrupo = claveGrupoPago(principal);
+      const pagosDelPuesto = listaPagos.filter(p => claveGrupoPago(p) === claveGrupo);
 
       // Año de la ficha: el seleccionado por la junta, o el del pago, o el actual
       const anoFicha = anoFichaSeleccionado || principal.ano_cuota || ANO_ACTUAL;
@@ -1879,7 +1900,7 @@
                 <div class="text-right shrink-0">
                   <span class="text-[10px] font-black tracking-widest uppercase block" style="color:var(--ficha-texto);opacity:.8">PUESTO</span>
                   <span class="font-mono font-black text-2xl sm:text-3xl tracking-widest inline-block transform -rotate-1 drop-shadow-xs" style="color:var(--ficha-texto)">
-                    ${puestoFormat}
+                    ${puestoFormat || '—'}
                   </span>
                 </div>
               </div>
@@ -1926,7 +1947,7 @@
       fichaActual = {
         nombre: principal.nombre,
         apartamento: principal.apartamento,
-        puesto: principal.puesto,
+        puesto: principal.puesto || '',
         puestoFormat,
         anoFicha,
         totalAprobados,
@@ -1942,7 +1963,9 @@
       const totalRecaudado = listaPagos.filter(p => p.estado === 'Aprobado').reduce((s, p) => s + p.monto, 0);
       const pendientes = listaPagos.filter(p => p.estado === 'Pendiente');
       const rechazados = listaPagos.filter(p => p.estado === 'Rechazado');
-      const puestosUnicos = new Set(listaPagos.map(p => p.puesto.toUpperCase())).size;
+      const puestosUnicos = new Set(
+        listaPagos.map(p => String(p.puesto || '').trim().toUpperCase()).filter(Boolean)
+      ).size;
 
       document.getElementById('kpi-total-recaudado').textContent = `$${totalRecaudado.toFixed(2)}`;
       document.getElementById('kpi-cuotas-aprobadas').textContent = `${listaPagos.filter(p => p.estado === 'Aprobado').length} cuotas conciliadas`;
@@ -1971,8 +1994,8 @@
         tr.innerHTML = `
           <td class="py-3 px-4 font-bold text-slate-900">${p.nombre}</td>
           <td class="py-3 px-4">
-            <span class="font-bold text-slate-800">Apto ${p.apartamento}</span> ·
-            <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${p.puesto}</span>
+            <span class="font-bold text-slate-800">Apto ${p.apartamento}</span>
+            ${p.puesto ? ` · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${p.puesto}</span>` : ''}
           </td>
           <td class="py-3 px-4 font-mono text-slate-600">
             <div>${p.fecha_pago}</div>
@@ -2040,10 +2063,10 @@
       const grid = document.getElementById('grid-clientes-resumen');
       grid.innerHTML = '';
 
-      // Agrupar por puesto
+      // Agrupar por puesto (o por apartamento si la junta aún no asignó puesto)
       const puestosMap = {};
       listaPagos.forEach(p => {
-        const k = `${p.apartamento}_${p.puesto}`;
+        const k = claveGrupoPago(p);
         if (!puestosMap[k]) {
           puestosMap[k] = {
             nombre: p.nombre,
@@ -2074,7 +2097,7 @@
                 <h4 class="font-bold text-slate-900 text-sm">${c.nombre}</h4>
                 <p class="text-xs text-slate-500">Apto: <b>${c.apartamento}</b></p>
               </div>
-              <span class="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg border border-indigo-100">P-${c.puesto}</span>
+              ${c.puesto ? `<span class="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg border border-indigo-100">P-${c.puesto}</span>` : '<span class="font-mono font-bold text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg border border-slate-200">Sin puesto</span>'}
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs pt-3 mt-2 border-t border-slate-100">
               <div>
@@ -2112,7 +2135,7 @@
       cambiarSubseccionAdmin('conciliacion');
       const palabras = String(nombre).toLowerCase().split(/\s+/).filter(Boolean);
       const suyos = listaPagos.filter(p => {
-        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto || ''}`.toLowerCase();
         return palabras.every(pal => campos.includes(pal));
       });
       estadoFiltroAdmin = 'todos';
@@ -2127,7 +2150,7 @@
       // Abrir en el año más reciente que tenga pagos este residente
       const palabras = String(nombre).toLowerCase().split(/\s+/).filter(Boolean);
       const suyos = listaPagos.filter(p => {
-        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto || ''}`.toLowerCase();
         return palabras.every(pal => campos.includes(pal));
       });
       if (suyos.length) {
@@ -2188,7 +2211,7 @@
 
       document.getElementById('modal-img-recibo').src = p.foto_url;
       document.getElementById('modal-recibo-id').textContent = p.id;
-      document.getElementById('modal-recibo-nombre').textContent = `${p.nombre} — Apto ${p.apartamento} · Puesto ${p.puesto}`;
+      document.getElementById('modal-recibo-nombre').textContent = `${p.nombre} — Apto ${p.apartamento}${p.puesto ? ` · Puesto ${p.puesto}` : ''}`;
       document.getElementById('modal-recibo-fecha').textContent = p.fecha_pago;
       document.getElementById('modal-recibo-meses').textContent = (p.meses_pagados || []).join(', ');
       document.getElementById('modal-recibo-monto').textContent = `$${p.monto.toFixed(2)} USD`;
@@ -2426,7 +2449,7 @@
       set('edit-pago-id', p.id);
       set('edit-nombre', p.nombre);
       set('edit-apto', p.apartamento);
-      set('edit-puesto', p.puesto);
+      set('edit-puesto', p.puesto || '');
       set('edit-monto', Number(p.monto).toFixed(2));
       set('edit-fecha', p.fecha_pago || new Date().toISOString().slice(0, 10));
       set('edit-estado', p.estado || 'Pendiente');
@@ -2522,7 +2545,7 @@
       const fecha = document.getElementById('edit-fecha').value;
       const estado = document.getElementById('edit-estado').value;
 
-      if (!nombre || !apto || !puesto || isNaN(monto)) {
+      if (!nombre || !apto || isNaN(monto)) {
         mostrarToast('Completa todos los campos obligatorios', '⚠️');
         return;
       }
@@ -2579,7 +2602,7 @@
             ${historico ? 'CONSTANCIA HISTÓRICA DE PAGO (AÑO ANTERIOR)' : 'COMPROBANTE ELECTRÓNICO DE PAGO MÓVIL'}
           </text>
           <text x="50" y="125" font-family="Arial" font-size="13" fill="#64748B">Residente: <tspan font-weight="bold" fill="#0F172A">${nombre}</tspan></text>
-          <text x="50" y="160" font-family="Arial" font-size="13" fill="#64748B">Inmueble: <tspan font-weight="bold" fill="#0F172A">Apto ${apto} · Puesto ${puesto}</tspan></text>
+          <text x="50" y="160" font-family="Arial" font-size="13" fill="#64748B">Inmueble: <tspan font-weight="bold" fill="#0F172A">Apto ${apto}${puesto ? ` · Puesto ${puesto}` : ''}</tspan></text>
           <text x="50" y="195" font-family="Arial" font-size="13" fill="#64748B">Monto: <tspan font-weight="bold" fill="#16A34A">$${monto.toFixed(2)} USD</tspan></text>
           <text x="50" y="230" font-family="Arial" font-size="13" fill="#64748B">Referencia Bancaria: <tspan font-weight="bold" fill="#4338CA">${ref}</tspan></text>
           <text x="50" y="265" font-family="Arial" font-size="13" fill="#64748B">Canal: <tspan font-weight="bold" fill="#0F172A">Pago Móvil Interbancario</tspan></text>
@@ -2659,7 +2682,7 @@
       centro('PUESTO', ix + iw - 10, iy + 34);
       ctx.globalAlpha = 1;
       ctx.font = font(40);
-      centro(dato.puestoFormat, ix + iw - 10, iy + 74);
+      centro(dato.puestoFormat || '—', ix + iw - 10, iy + 74);
 
       // Línea separadora
       y += 46;
@@ -2732,7 +2755,7 @@
       const url = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Ficha_${dato.puestoFormat}_${(dato.nombre || '').replace(/\s+/g, '_')}_${dato.anoFicha}.png`;
+      a.download = `Ficha_${dato.puestoFormat || ('APTO-' + (dato.apartamento || ''))}_${(dato.nombre || '').replace(/\s+/g, '_')}_${dato.anoFicha}.png`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
 
       registrarFichaCompartida();
@@ -2881,7 +2904,7 @@
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="py-3 px-4 font-mono text-slate-600">${f.fecha}</td>
             <td class="py-3 px-4 font-bold text-slate-900">${f.nombre}</td>
-            <td class="py-3 px-4"><span class="font-bold text-slate-800">Apto ${f.apartamento}</span> · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${f.puesto}</span></td>
+            <td class="py-3 px-4"><span class="font-bold text-slate-800">Apto ${f.apartamento}</span>${f.puesto ? ` · <span class="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">P-${f.puesto}</span>` : ''}</td>
             <td class="py-3 px-4 text-center font-mono">${f.ano}</td>
             <td class="py-3 px-4 text-center font-bold">${f.sellados} / 12</td>
             <td class="py-3 px-4 text-center">
@@ -3290,6 +3313,37 @@
       return typeof Notification !== 'undefined' && 'serviceWorker' in navigator;
     }
 
+    // ==============================================================
+    // DIAGNÓSTICO DE NOTIFICACIONES
+    // Cada paso (registro del SW, obtención del token, envío del aviso)
+    // deja una traza en la colección `notificaciones_debug` de Firestore.
+    // Así se puede revisar desde el PC qué está pasando en el teléfono.
+    // ==============================================================
+    let ultimoErrorNotif = '';
+
+    async function registrarDiagnosticoNotif(evento, detalle) {
+      if (!dbFirebase) return;
+      try {
+        await dbFirebase.collection('notificaciones_debug').doc('app_' + String(evento)).set({
+          evento: String(evento),
+          cuando: new Date().toISOString(),
+          origen: 'app',
+          version: String(VERSION_APP),
+          url: String(location.href).slice(0, 200),
+          agente: String(navigator.userAgent).slice(0, 300),
+          permiso: (typeof Notification !== 'undefined') ? Notification.permission : 'sin-soporte',
+          detalle: JSON.stringify(detalle || {}).slice(0, 1500)
+        }, { merge: true });
+      } catch (e) { /* silencioso: el diagnóstico nunca debe romper la app */ }
+    }
+
+    function textoErrorNotif(e) {
+      if (!e) return 'error desconocido';
+      const codigo = e.code ? String(e.code) : '';
+      const mensaje = e.message ? String(e.message) : String(e);
+      return (codigo ? codigo + ' — ' : '') + mensaje;
+    }
+
     function actualizarEstadoNotificaciones() {
       const box = document.getElementById('cfg-estado-notif');
       if (!box) return;
@@ -3313,6 +3367,9 @@
       } else {
         box.className = 'p-3.5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900';
         box.innerHTML = '🔕 Notificaciones <b>desactivadas</b>. Pulsa "Activar Notificaciones" para recibir avisos de pagos.';
+      }
+      if (ultimoErrorNotif) {
+        box.innerHTML += `<br><span class="text-[10px] font-mono break-all">Último error: ${ultimoErrorNotif}</span>`;
       }
       mostrarDispositivosSuscritos();
     }
@@ -3338,7 +3395,9 @@
         return;
       }
       const permiso = await Notification.requestPermission();
+      registrarDiagnosticoNotif('permiso_pedido', { permiso: String(permiso) });
       if (permiso !== 'granted') {
+        ultimoErrorNotif = 'Permiso de notificaciones: ' + permiso;
         mostrarToast('Permiso de notificaciones no concedido', '🔕');
         actualizarEstadoNotificaciones();
         return;
@@ -3356,7 +3415,10 @@
     }
 
     async function registrarTokenNotificaciones() {
-      if (typeof firebase === 'undefined' || !firebase.messaging) return null;
+      if (typeof firebase === 'undefined' || !firebase.messaging) {
+        ultimoErrorNotif = 'El SDK de Firebase Messaging no está disponible en esta página';
+        return null;
+      }
       try {
         if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
         if (!messagingFirebase) messagingFirebase = firebase.messaging();
@@ -3389,6 +3451,10 @@
         let registro = await navigator.serviceWorker.getRegistration();
         if (!registro) {
           registro = await navigator.serviceWorker.register('sw.js', { scope: './' });
+          registrarDiagnosticoNotif('sw_registrado', {
+            scope: registro.scope,
+            activo: registro.active ? registro.active.state : 'sin-active'
+          });
         }
         await Promise.race([
           navigator.serviceWorker.ready,
@@ -3397,12 +3463,20 @@
         // Se vuelve a leer el registro para asegurar que ya esté "activo"
         registro = (await navigator.serviceWorker.getRegistration()) || registro;
 
+        if (!registro || !registro.active) {
+          registrarDiagnosticoNotif('sw_inactivo', {
+            tieneRegistro: !!registro,
+            estado: registro && registro.active ? registro.active.state : 'desconocido'
+          });
+        }
+
         const opciones = { serviceWorkerRegistration: registro };
         if (VAPID_PUBLIC_KEY) opciones.vapidKey = VAPID_PUBLIC_KEY;
 
         const token = await messagingFirebase.getToken(opciones);
         if (token) {
           tokenNotificaciones = token;
+          ultimoErrorNotif = '';
           localStorage.setItem(STORAGE_KEY_TOKEN_NOTIF, token);
           if (dbFirebase) {
             await dbFirebase.collection('suscripciones').doc(token).set({
@@ -3412,10 +3486,24 @@
               activo: true
             }, { merge: true });
           }
+          registrarDiagnosticoNotif('token_ok', {
+            token: String(token).slice(0, 30) + '…',
+            longitud: String(token).length,
+            swActivo: !!(registro && registro.active)
+          });
+        } else {
+          ultimoErrorNotif = 'getToken() devolvió un token vacío';
+          registrarDiagnosticoNotif('token_vacio', { swActivo: !!(registro && registro.active) });
         }
         return token;
       } catch (e) {
-        console.warn('No se pudo registrar el token de notificaciones:', e.message);
+        ultimoErrorNotif = textoErrorNotif(e);
+        console.warn('No se pudo registrar el token de notificaciones:', e && e.message);
+        registrarDiagnosticoNotif('token_error', {
+          codigo: e && e.code ? String(e.code) : '',
+          mensaje: e && e.message ? String(e.message) : String(e),
+          nombre: e && e.name ? String(e.name) : ''
+        });
         return null;
       }
     }
@@ -3429,10 +3517,17 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: pago && pago.id ? pago.id : '' })
         });
+        const cuerpo = await r.json().catch(() => ({}));
+        registrarDiagnosticoNotif('aviso_pedido', {
+          pago: pago && pago.id ? String(pago.id) : '',
+          http: r.status,
+          respuesta: cuerpo
+        });
         if (!r.ok) console.warn('Aviso push no enviado:', r.status);
         return r.ok;
       } catch (e) {
         console.warn('No se pudo pedir el aviso push:', e.message);
+        registrarDiagnosticoNotif('aviso_error', { mensaje: e && e.message ? String(e.message) : String(e) });
         return false;
       }
     }
@@ -3440,7 +3535,7 @@
     // Aviso al administrador cuando entra un pago nuevo
     function notificarPagoNuevo(pago) {
       const titulo = '💳 Nuevo pago reportado';
-      const cuerpo = `${pago.nombre} — Apto ${pago.apartamento} · Puesto ${pago.puesto} — $${Number(pago.monto).toFixed(2)}`;
+      const cuerpo = `${pago.nombre} — Apto ${pago.apartamento}${pago.puesto ? ` · Puesto ${pago.puesto}` : ''} — $${Number(pago.monto).toFixed(2)}`;
 
       if (isAdminAutenticado) {
         mostrarToast(`${pago.nombre} pagó $${Number(pago.monto).toFixed(2)}`, '🔔');
@@ -3453,19 +3548,22 @@
 
       if (notificacionesSoportadas() && Notification.permission === 'granted' && localStorage.getItem('autopago_notif_activas') === 'true') {
         try {
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification(titulo, {
-                body: cuerpo,
-                icon: 'icons/icon-192.png',
-                badge: 'icons/icon-192.png',
-                tag: pago.id || 'pago-nuevo',
-                data: { url: './index.html?vista=admin' }
-              });
+          // El aviso del sistema SIEMPRE se muestra a través del Service Worker:
+          // `new Notification()` no está permitido en Android Chrome y fallaba
+          // en silencio (por eso dejaron de verse los avisos con la app abierta).
+          navigator.serviceWorker.ready
+            .then(reg => reg.showNotification(titulo, {
+              body: cuerpo,
+              icon: 'icons/icon-192.png',
+              badge: 'icons/icon-192.png',
+              tag: pago.id || 'pago-nuevo',
+              renotify: true,
+              vibrate: [120, 60, 120],
+              data: { url: './index.html?vista=admin', id: pago.id || '' }
+            }))
+            .catch(() => {
+              try { new Notification(titulo, { body: cuerpo, icon: 'icons/icon-192.png' }); } catch (e) { /* silencioso */ }
             });
-          } else {
-            new Notification(titulo, { body: cuerpo, icon: 'icons/icon-192.png' });
-          }
         } catch (e) { /* silencioso */ }
       }
     }

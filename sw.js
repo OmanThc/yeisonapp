@@ -1,6 +1,6 @@
 /* Service Worker: permite que la app cargue sin conexión y sea instalable en Chrome.
    También recibe los avisos push de Firebase (FCM) cuando la app está cerrada. */
-const CACHE_NAME = 'estacionamiento-maroa-v10';
+const CACHE_NAME = 'estacionamiento-maroa-v11';
 
 const APP_SHELL = [
   './',
