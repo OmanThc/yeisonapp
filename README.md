@@ -88,6 +88,9 @@ residentes en el menú de inicio). Desde esta pestaña la junta puede:
 Desde aquí se puede:
 
 - Cambiar el **nombre del edificio**, el **subtítulo** y la **letra del logo**.
+- Editar los **🏦 Datos Bancarios** del Pago Móvil (banco, teléfono, RIF, titular,
+  cuenta y una nota). Se muestran al residente y traen un botón para
+  **enviarlos por WhatsApp**.
 - Ajustar la **cuota mensual** (el monto del reporte se calcula solo).
 - Elegir **colores** (principal, acento y tarjetón) o usar paletas rápidas.
 - **Personalizar la ficha**: colores de fondo, texto, sello *cancelado* y sello
@@ -95,6 +98,16 @@ Desde aquí se puede:
   mes cancelado y del mes pendiente).
 - **Guardar** los cambios (se publican en Firestore para todos los dispositivos).
 - Activar **notificaciones** de pagos y ver el **estado de instalación** de la app.
+
+### ✏️ Modificar un pago
+Cada pago de la **Conciliación** tiene un botón **✏️ Editar** (también disponible
+desde el recibo y desde el Historial por Cliente) que permite cambiar:
+
+- Nombre, apartamento y puesto del residente.
+- Año de la cuota, monto y fecha.
+- Estado (Pendiente / Aprobado / Rechazado).
+- Los **meses** que cancela (selección individual).
+- El **comprobante** (reemplazarlo por otra imagen o quitarlo).
 
 ## Notificaciones cuando alguien paga
 

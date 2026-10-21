@@ -284,7 +284,9 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 pt-0.5">
-          <span>Sugerencias rápidas:</span>
+          <span>Año:</span>
+          <span id="chips-anos-ficha" class="flex gap-1"></span>
+          <span class="ml-2">Sugerencias rápidas:</span>
           <button onclick="buscarSugerencia('Carlos Mendoza')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Carlos Mendoza</button>
           <button onclick="buscarSugerencia('0003')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-mono font-medium">Puesto 0003</button>
           <button onclick="buscarSugerencia('Ana Gómez')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Ana Gómez</button>
@@ -463,7 +465,9 @@
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           </div>
           <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-            <span>Sugerencias rápidas:</span>
+            <span>Año de la ficha:</span>
+            <span id="chips-anos-ficha-admin" class="flex gap-1"></span>
+            <span class="ml-2">Sugerencias:</span>
             <button onclick="buscarSugerenciaAdmin('Carlos Mendoza')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Carlos Mendoza</button>
             <button onclick="buscarSugerenciaAdmin('0003')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-mono font-medium">Puesto 0003</button>
             <button onclick="buscarSugerenciaAdmin('Ana Gómez')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">Ana Gómez</button>
@@ -527,6 +531,47 @@
               <label class="block font-semibold text-slate-700 mb-1">Cuota mensual (USD) *</label>
               <input type="number" step="0.01" min="0.01" id="cfg-cuota" oninput="refrescarVistaPreviaConfig()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-mono font-bold">
             </div>
+          </div>
+        </div>
+
+        <!-- Datos Bancarios -->
+        <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">🏦 Datos Bancarios para el Pago Móvil</h3>
+            <p class="text-slate-500 mt-0.5">Estos datos se muestran a los residentes cuando van a pagar. Los cambios se publican para todos los dispositivos.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Banco(s)</label>
+              <input type="text" id="cfg-banco-nombre" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. Banco Banesco / Mercantil" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Teléfono Pago Móvil</label>
+              <input type="text" id="cfg-banco-telefono" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. 0414-9876543" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">RIF / Cédula</label>
+              <input type="text" id="cfg-banco-rif" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. J-30948210-4" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Titular</label>
+              <input type="text" id="cfg-banco-titular" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. Condominio Residencias Maroa" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block font-semibold text-slate-700 mb-1">Número de Cuenta Corriente</label>
+              <input type="text" id="cfg-banco-cuenta" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. 0134-0982-11-0982736451" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm font-mono">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block font-semibold text-slate-700 mb-1">Instrucciones o nota adicional (opcional)</label>
+              <textarea id="cfg-banco-nota" rows="2" oninput="refrescarVistaPreviaBancos()" placeholder="Ej. Enviar el comprobante al 0414-1234567 después de pagar." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm"></textarea>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="abrirModalBancos()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">👁️ Ver cómo lo ve el residente</button>
+          </div>
+          <div>
+            <span class="font-semibold text-slate-500 block mb-1.5">Vista previa (así lo verá el residente):</span>
+            <div id="cfg-banco-preview" class="space-y-2.5"></div>
           </div>
         </div>
 
@@ -818,19 +863,12 @@
         <h3 class="font-bold text-slate-900 text-base">Cuentas para Pago Móvil</h3>
         <button onclick="cerrarModalBancos()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
-      <div class="space-y-2.5">
-        <div class="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100">
-          <span class="text-[10px] uppercase font-bold text-indigo-700 block">Datos Pago Móvil</span>
-          <p class="mt-1 font-semibold text-slate-900">Banco Banesco / Mercantil</p>
-          <p class="font-mono font-bold text-sm text-indigo-800">0414-9876543</p>
-          <p class="text-slate-600">RIF: J-30948210-4</p>
-        </div>
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-          <span class="text-[10px] uppercase font-bold text-slate-500 block">Cuenta Corriente</span>
-          <p class="font-mono text-xs font-semibold text-slate-800 mt-1 select-all">0134-0982-11-0982736451</p>
-          <p class="text-[11px] text-slate-500 mt-0.5">Condominio Residencias Maroa</p>
-        </div>
+      <div id="modal-bancos-contenido" class="space-y-2.5">
+        <!-- Renderizado dinámicamente desde la configuración -->
       </div>
+      <a id="modal-bancos-whatsapp" href="#" target="_blank" class="hidden w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs text-center block">
+        💬 Enviar por WhatsApp
+      </a>
       <button onclick="cerrarModalBancos()" class="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs">
         Entendido
       </button>
@@ -884,7 +922,82 @@
     </div>
   </div>
 
-  <!-- TOAST DE NOTIFICACIÓN FLOTANTE -->
+  <!-- MODAL: MODIFICAR PAGO MÓVIL (ADMIN) -->
+  <div id="modal-editar-pago" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">✏️ Modificar Pago</h3>
+          <p class="text-[11px] text-slate-400 font-mono" id="edit-pago-id"></p>
+        </div>
+        <button onclick="cerrarModalEditarPago()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <form onsubmit="guardarEdicionPago(event)" class="space-y-3">
+        <div class="p-3 rounded-2xl border space-y-2" id="edit-comprobante-box">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Comprobante adjunto</span>
+          <div class="flex items-center gap-3">
+            <img id="edit-pago-img" src="" alt="Comprobante" class="w-16 h-16 object-contain rounded-lg border border-slate-200 bg-slate-50">
+            <div class="flex-1">
+              <input type="file" id="edit-pago-archivo" accept="image/*" onchange="cambiarComprobanteEdicion(this)" class="w-full text-[11px]">
+              <button type="button" onclick="quitarComprobanteEdicion()" class="mt-1 text-[11px] px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-semibold">Quitar comprobante</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Nombre Residente *</label>
+          <input type="text" id="edit-nombre" required class="w-full p-2 bg-slate-50 border rounded-xl">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Apartamento *</label>
+            <input type="text" id="edit-apto" required class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Nº Puesto *</label>
+            <input type="text" id="edit-puesto" required class="w-full p-2 bg-slate-50 border rounded-xl font-bold">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Año de Cuota</label>
+            <select id="edit-ano" class="w-full p-2 bg-slate-50 border rounded-xl">
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Monto ($) *</label>
+            <input type="number" step="0.01" id="edit-monto" required class="w-full p-2 bg-slate-50 border rounded-xl font-mono font-bold">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">Fecha</label>
+            <input type="date" id="edit-fecha" required class="w-full p-2 bg-slate-50 border rounded-xl font-mono">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">Estado</label>
+            <select id="edit-estado" class="w-full p-2 bg-slate-50 border rounded-xl">
+              <option value="Pendiente">Pendiente</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Meses que cancela</label>
+          <div id="edit-meses-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5"></div>
+          <p class="text-[11px] text-slate-400 mt-1"><span id="edit-conteo-meses">0</span> mes(es) seleccionado(s)</p>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="cerrarModalEditarPago()" class="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+          <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast-notificacion" class="hidden fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
     <span id="toast-icono">✓</span>
     <span id="toast-texto">Operación completada</span>
@@ -976,6 +1089,7 @@
     let estadoFiltroAdmin = 'todos';
     let fichaActual = null;          // ficha visible en pantalla (para descargar/registrar)
     let historialFichas = [];        // registro local de fichas compartidas
+    let anoFichaSeleccionado = null;  // año que se está consultando en las fichas
 
     // ==============================================================
     // SERVIDOR: FIREBASE (Firestore en la nube)
@@ -1120,6 +1234,7 @@
 
       // Cargar historial de fichas compartidas
       cargarHistorialFichasLocal();
+      renderizarChipsAnosFicha();
 
       // Establecer fecha de hoy en formulario
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
@@ -1372,8 +1487,7 @@
       quitarFoto();
       mesesSeleccionadosReporte = [`${anoSeleccionadoReporte}-01`];
       renderizarMesesReporte();
-      navegarA('consultar');
-      buscarSugerencia(nombre);
+      mostrarToast('Tu reporte fue enviado a la junta', '🎉');
     }
 
     // ==============================================================
@@ -1383,6 +1497,51 @@
       const input = document.getElementById('input-busqueda-residente');
       input.value = texto;
       filtrarFichaResidente(texto);
+    }
+
+    // Años disponibles según los pagos registrados (más el actual)
+    function anosDisponiblesFicha() {
+      const set = new Set([ANO_ACTUAL]);
+      listaPagos.forEach(p => {
+        if (p.ano_cuota) set.add(Number(p.ano_cuota));
+        (p.meses_pagados || []).forEach(m => {
+          const a = parseInt(String(m).slice(0, 4));
+          if (a) set.add(a);
+        });
+      });
+      return [...set].filter(a => !isNaN(a)).sort((a, b) => b - a);
+    }
+
+    // Dibuja los botones de año en las dos zonas (admin y consultar)
+    function renderizarChipsAnosFicha() {
+      const anos = anosDisponiblesFicha();
+      if (!anoFichaSeleccionado || !anos.includes(anoFichaSeleccionado)) anoFichaSeleccionado = ANO_ACTUAL;
+      ['chips-anos-ficha', 'chips-anos-ficha-admin'].forEach(id => {
+        const cont = document.getElementById(id);
+        if (!cont) return;
+        cont.innerHTML = '';
+        anos.forEach(a => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = a;
+          b.className = `px-2 py-0.5 rounded-md font-mono font-bold ${
+            a === anoFichaSeleccionado
+              ? 'bg-indigo-600 text-white'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+          }`;
+          b.onclick = () => cambiarAnoFicha(a);
+          cont.appendChild(b);
+        });
+      });
+    }
+
+    function cambiarAnoFicha(ano) {
+      anoFichaSeleccionado = ano;
+      renderizarChipsAnosFicha();
+      const inpAdmin = document.getElementById('input-busqueda-residente-admin');
+      const inpPub = document.getElementById('input-busqueda-residente');
+      if (inpAdmin && inpAdmin.value) filtrarFichaAdmin(inpAdmin.value);
+      else if (inpPub && inpPub.value) filtrarFichaResidente(inpPub.value);
     }
 
     // Requiere sesión de administrador para ver fichas
@@ -1439,8 +1598,8 @@
       const puestoFormat = principal.puesto.replace(/[^0-9]/g, '').padStart(4, '0') || principal.puesto;
       const pagosDelPuesto = listaPagos.filter(p => p.puesto.toUpperCase() === principal.puesto.toUpperCase());
 
-      // Año de la ficha (el año de la cuota, o el actual)
-      const anoFicha = principal.ano_cuota || ANO_ACTUAL;
+      // Año de la ficha: el seleccionado por la junta, o el del pago, o el actual
+      const anoFicha = anoFichaSeleccionado || principal.ano_cuota || ANO_ACTUAL;
       const mapaMeses = {};
       MESES.forEach(m => mapaMeses[m.id] = { estado: 'por_pagar' });
 
@@ -1682,6 +1841,9 @@
               ` : `
                 <span class="text-emerald-700 font-semibold">Conciliado</span>
               `}
+              <button onclick='abrirModalEditarPago("${p.id}")' class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold flex items-center gap-1" title="Modificar pago">
+                ✏️ <span class="hidden sm:inline">Editar</span>
+              </button>
               <button onclick='eliminarPago("${p.id}")' class="p-1 text-slate-400 hover:text-rose-600" title="Eliminar">🗑️</button>
             </div>
           </td>
@@ -1715,7 +1877,7 @@
       if (sub === 'config') cargarFormularioConfiguracion();
       if (sub === 'conciliacion') renderizarTablaAdmin(estadoFiltroAdmin === 'todos' ? listaPagos : listaPagos.filter(p => p.estado === estadoFiltroAdmin));
       if (sub === 'clientes') renderizarClientesAdmin();
-      if (sub === 'fichas') { renderizarHistorialFichas(); actualizarBotonesFicha(); }
+      if (sub === 'fichas') { renderizarChipsAnosFicha(); renderizarHistorialFichas(); actualizarBotonesFicha(); }
     }
 
     function renderizarClientesAdmin() {
@@ -1774,18 +1936,49 @@
               </div>
             ` : ''}
           </div>
-          <button onclick='verFichaCliente("${c.nombre}")' class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors">
-            Ver Ficha Sellada
-          </button>
+          <div class="flex gap-2">
+            <button onclick='verFichaCliente("${c.nombre}")' class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors">
+              Ver Ficha Sellada
+            </button>
+            <button onclick='verPagosCliente("${c.nombre}")' class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors" title="Ver y modificar sus pagos">
+              ✏️ Modificar
+            </button>
+          </div>
         `;
         grid.appendChild(card);
       });
+    }
+
+    // Muestra los pagos de un residente para poder modificarlos
+    function verPagosCliente(nombre) {
+      if (!isAdminAutenticado) { abrirModalPin(); return; }
+      navegarA('admin');
+      cambiarSubseccionAdmin('conciliacion');
+      const palabras = String(nombre).toLowerCase().split(/\s+/).filter(Boolean);
+      const suyos = listaPagos.filter(p => {
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        return palabras.every(pal => campos.includes(pal));
+      });
+      estadoFiltroAdmin = 'todos';
+      renderizarTablaAdmin(suyos);
+      mostrarToast(suyos.length ? `Editando los pagos de ${nombre}` : 'Sin pagos registrados', '✏️');
     }
 
     function verFichaCliente(nombre) {
       if (!isAdminAutenticado) { abrirModalPin(); return; }
       navegarA('admin');
       cambiarSubseccionAdmin('fichas');
+      // Abrir en el año más reciente que tenga pagos este residente
+      const palabras = String(nombre).toLowerCase().split(/\s+/).filter(Boolean);
+      const suyos = listaPagos.filter(p => {
+        const campos = `${p.nombre} ${p.apartamento} ${p.puesto}`.toLowerCase();
+        return palabras.every(pal => campos.includes(pal));
+      });
+      if (suyos.length) {
+        const anos = suyos.map(p => Number(p.ano_cuota) || parseInt(String((p.meses_pagados || [])[0] || '').slice(0, 4))).filter(Boolean);
+        if (anos.length) anoFichaSeleccionado = Math.max(...anos);
+      }
+      renderizarChipsAnosFicha();
       buscarSugerenciaAdmin(nombre);
     }
 
@@ -1845,10 +2038,15 @@
       document.getElementById('modal-recibo-monto').textContent = `$${p.monto.toFixed(2)} USD`;
 
       const acciones = document.getElementById('modal-recibo-acciones');
-      if (isAdminAutenticado && p.estado === 'Pendiente') {
+      if (isAdminAutenticado) {
         acciones.innerHTML = `
-          <button onclick='confirmarPagoMovil("${p.id}"); cerrarModalRecibo();' class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold">
-            ✓ Confirmar Pago Móvil
+          ${p.estado === 'Pendiente' ? `
+            <button onclick='confirmarPagoMovil("${p.id}"); cerrarModalRecibo();' class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold">
+              ✓ Confirmar Pago Móvil
+            </button>
+          ` : ''}
+          <button onclick='cerrarModalRecibo(); abrirModalEditarPago("${p.id}");' class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">
+            ✏️ Modificar este pago
           </button>
         `;
       } else {
@@ -1952,8 +2150,72 @@
     }
 
     // Modales de Bancos y Registro Manual
-    function abrirModalBancos() { document.getElementById('modal-bancos').classList.remove('hidden'); }
+    function abrirModalBancos() {
+      dibujarContenidoBancos(document.getElementById('modal-bancos-contenido'));
+      const wa = document.getElementById('modal-bancos-whatsapp');
+      if (wa) {
+        const texto = `Datos para Pago Móvil — ${configuracion.nombreEdificio || ''}\n\n` +
+          `Banco: ${configuracion.bancoNombre || ''}\n` +
+          `Teléfono: ${configuracion.bancoTelefono || ''}\n` +
+          `RIF/Cédula: ${configuracion.bancoRif || ''}\n` +
+          `Titular: ${configuracion.bancoTitular || ''}\n` +
+          (configuracion.bancoCuenta ? `Cuenta: ${configuracion.bancoCuenta}\n` : '') +
+          (configuracion.bancoNota ? `\n${configuracion.bancoNota}` : '');
+        wa.href = 'https://wa.me/?text=' + encodeURIComponent(texto);
+      }
+      document.getElementById('modal-bancos').classList.remove('hidden');
+    }
+
     function cerrarModalBancos() { document.getElementById('modal-bancos').classList.add('hidden'); }
+
+    // Dibuja los datos bancarios con estilo en cualquier contenedor
+    function dibujarContenidoBancos(cont) {
+      if (!cont) return;
+      const vacio = !configuracion.bancoNombre && !configuracion.bancoTelefono && !configuracion.bancoCuenta;
+      if (vacio) {
+        cont.innerHTML = `<div class="p-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">La junta aún no ha cargado los datos bancarios.</div>`;
+        return;
+      }
+      let html = '';
+      if (configuracion.bancoNombre || configuracion.bancoTelefono || configuracion.bancoRif) {
+        html += `
+          <div class="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100">
+            <span class="text-[10px] uppercase font-bold text-indigo-700 block">Datos Pago Móvil</span>
+            ${configuracion.bancoNombre ? `<p class="mt-1 font-semibold text-slate-900">${configuracion.bancoNombre}</p>` : ''}
+            ${configuracion.bancoTelefono ? `<p class="font-mono font-bold text-sm text-indigo-800">${configuracion.bancoTelefono}</p>` : ''}
+            ${configuracion.bancoRif ? `<p class="text-slate-600">RIF: ${configuracion.bancoRif}</p>` : ''}
+          </div>`;
+      }
+      if (configuracion.bancoCuenta || configuracion.bancoTitular) {
+        html += `
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Cuenta Corriente</span>
+            ${configuracion.bancoCuenta ? `<p class="font-mono text-xs font-semibold text-slate-800 mt-1 select-all">${configuracion.bancoCuenta}</p>` : ''}
+            ${configuracion.bancoTitular ? `<p class="text-[11px] text-slate-500 mt-0.5">${configuracion.bancoTitular}</p>` : ''}
+          </div>`;
+      }
+      if (configuracion.bancoNota) {
+        html += `<div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px]">${configuracion.bancoNota}</div>`;
+      }
+      cont.innerHTML = html;
+    }
+
+    // Vista previa en vivo mientras se edita en Configuración
+    function refrescarVistaPreviaBancos() {
+      const prev = { ...configuracion };
+      const g = (id, k) => { const el = document.getElementById(id); if (el) prev[k] = el.value.trim(); };
+      g('cfg-banco-nombre', 'bancoNombre');
+      g('cfg-banco-telefono', 'bancoTelefono');
+      g('cfg-banco-rif', 'bancoRif');
+      g('cfg-banco-titular', 'bancoTitular');
+      g('cfg-banco-cuenta', 'bancoCuenta');
+      g('cfg-banco-nota', 'bancoNota');
+      // Guardado temporal solo para el preview (sin publicar)
+      const guardado = configuracion;
+      configuracion = prev;
+      dibujarContenidoBancos(document.getElementById('cfg-banco-preview'));
+      configuracion = guardado;
+    }
 
     function abrirModalManual() { document.getElementById('modal-manual').classList.remove('hidden'); }
     function cerrarModalManual() { document.getElementById('modal-manual').classList.add('hidden'); }
@@ -1986,6 +2248,151 @@
       cerrarModalManual();
       actualizarPanelAdmin();
       mostrarToast(`Pago de ${nombre} guardado y sellado`, '✓');
+    }
+
+    // ==============================================================
+    // MODIFICAR UN PAGO EXISTENTE (solo junta)
+    // ==============================================================
+    let pagoEditando = null;         // pago que se está modificando
+    let mesesEditando = [];          // meses seleccionados en el modal
+    let fotoEditada = undefined;     // undefined = sin cambios; null = quitar; string = nueva imagen
+
+    function abrirModalEditarPago(id) {
+      if (!isAdminAutenticado) { abrirModalPin(); return; }
+      const p = listaPagos.find(item => item.id === id);
+      if (!p) { mostrarToast('No se encontró el pago', '⚠️'); return; }
+
+      pagoEditando = p;
+      fotoEditada = undefined;
+      mesesEditando = [...(p.meses_pagados || [])];
+
+      const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val; };
+      set('edit-pago-id', p.id);
+      set('edit-nombre', p.nombre);
+      set('edit-apto', p.apartamento);
+      set('edit-puesto', p.puesto);
+      set('edit-monto', Number(p.monto).toFixed(2));
+      set('edit-fecha', p.fecha_pago || new Date().toISOString().slice(0, 10));
+      set('edit-estado', p.estado || 'Pendiente');
+
+      const ano = p.ano_cuota || ANO_ACTUAL;
+      const selAno = document.getElementById('edit-ano');
+      selAno.innerHTML = [ANO_ACTUAL, ANO_ACTUAL + 1].map(a =>
+        `<option value="${a}" ${a === ano ? 'selected' : ''}>${a}</option>`).join('');
+
+      // Comprobante actual
+      const img = document.getElementById('edit-pago-img');
+      if (p.foto_url) { img.src = p.foto_url; img.classList.remove('hidden'); }
+      else { img.src = ''; img.classList.add('hidden'); }
+      document.getElementById('edit-pago-archivo').value = '';
+
+      renderizarMesesEdicion(ano);
+      document.getElementById('modal-editar-pago').classList.remove('hidden');
+    }
+
+    function cerrarModalEditarPago() {
+      document.getElementById('modal-editar-pago').classList.add('hidden');
+      pagoEditando = null;
+      fotoEditada = undefined;
+    }
+
+    function renderizarMesesEdicion(ano) {
+      const grid = document.getElementById('edit-meses-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      MESES.forEach(m => {
+        const key = `${ano}-${m.id}`;
+        const activo = mesesEditando.includes(key);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = m.abrev;
+        b.className = `py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+          activo ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
+        }`;
+        b.onclick = () => {
+          if (mesesEditando.includes(key)) mesesEditando = mesesEditando.filter(x => x !== key);
+          else mesesEditando.push(key);
+          mesesEditando.sort();
+          renderizarMesesEdicion(ano);
+        };
+        grid.appendChild(b);
+      });
+      const c = document.getElementById('edit-conteo-meses');
+      if (c) c.textContent = mesesEditando.length;
+    }
+
+    function cambiarComprobanteEdicion(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxLado = 900;
+          let w = img.width, h = img.height;
+          if (w > maxLado || h > maxLado) {
+            const esc = Math.min(maxLado / w, maxLado / h);
+            w = Math.round(w * esc); h = Math.round(h * esc);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          fotoEditada = canvas.toDataURL('image/jpeg', 0.82);
+          const pre = document.getElementById('edit-pago-img');
+          pre.src = fotoEditada; pre.classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function quitarComprobanteEdicion() {
+      fotoEditada = null;
+      const pre = document.getElementById('edit-pago-img');
+      pre.src = ''; pre.classList.add('hidden');
+      document.getElementById('edit-pago-archivo').value = '';
+      mostrarToast('Comprobante marcado para quitar (guarda para confirmar)', '🗑️');
+    }
+
+    function guardarEdicionPago(e) {
+      e.preventDefault();
+      if (!pagoEditando) return;
+
+      const nombre = document.getElementById('edit-nombre').value.trim();
+      const apto = document.getElementById('edit-apto').value.trim().toUpperCase();
+      const puesto = document.getElementById('edit-puesto').value.trim().toUpperCase();
+      const ano = parseInt(document.getElementById('edit-ano').value);
+      const monto = parseFloat(document.getElementById('edit-monto').value);
+      const fecha = document.getElementById('edit-fecha').value;
+      const estado = document.getElementById('edit-estado').value;
+
+      if (!nombre || !apto || !puesto || isNaN(monto)) {
+        mostrarToast('Completa todos los campos obligatorios', '⚠️');
+        return;
+      }
+      if (!mesesEditando.length) {
+        mostrarToast('Selecciona al menos un mes', '⚠️');
+        return;
+      }
+
+      // Actualizar el objeto del pago (se conserva el mismo id y su referencia)
+      pagoEditando.nombre = nombre;
+      pagoEditando.apartamento = apto;
+      pagoEditando.puesto = puesto;
+      pagoEditando.ano_cuota = ano;
+      pagoEditando.monto = monto;
+      pagoEditando.fecha_pago = fecha;
+      pagoEditando.estado = estado;
+      pagoEditando.meses_pagados = [...mesesEditando];
+      if (fotoEditada !== undefined) {
+        pagoEditando.foto_url = fotoEditada || generarSvgVoucher(nombre, apto, puesto, pagoEditando.referencia || 'EDIT', monto, ano < ANO_ACTUAL);
+      }
+
+      guardarPagosEnStorage(pagoEditando);   // guarda local + sube a la nube
+      cerrarModalEditarPago();
+      actualizarPanelAdmin();
+      refrescarFichaVisible();
+      mostrarToast(`Pago de ${nombre} actualizado`, '✏️');
     }
 
     // Exportar CSV
@@ -2354,7 +2761,14 @@
       fichaPendiente: '#92400E',
       fichaImgFondo: '',
       fichaImgCancelado: '',
-      fichaImgPendiente: ''
+      fichaImgPendiente: '',
+      // Datos bancarios mostrados al residente
+      bancoNombre: 'Banco Banesco / Mercantil',
+      bancoTelefono: '0414-9876543',
+      bancoRif: 'J-30948210-4',
+      bancoTitular: 'Condominio Residencias Maroa',
+      bancoCuenta: '0134-0982-11-0982736451',
+      bancoNota: ''
     };
     let configuracion = { ...CONFIG_DEFECTO };
 
@@ -2438,6 +2852,14 @@
       actualizarPreviewImagenFicha('fondo', configuracion.fichaImgFondo);
       actualizarPreviewImagenFicha('cancelado', configuracion.fichaImgCancelado);
       actualizarPreviewImagenFicha('pendiente', configuracion.fichaImgPendiente);
+      // Datos bancarios
+      set('cfg-banco-nombre', configuracion.bancoNombre);
+      set('cfg-banco-telefono', configuracion.bancoTelefono);
+      set('cfg-banco-rif', configuracion.bancoRif);
+      set('cfg-banco-titular', configuracion.bancoTitular);
+      set('cfg-banco-cuenta', configuracion.bancoCuenta);
+      set('cfg-banco-nota', configuracion.bancoNota);
+      refrescarVistaPreviaBancos();
       refrescarVistaPreviaConfig();
       actualizarEstadoNotificaciones();
       actualizarEstadoInstalacion();
@@ -2540,7 +2962,14 @@
         fichaPendiente: val('cfg-ficha-pendiente', CONFIG_DEFECTO.fichaPendiente),
         fichaImgFondo: configuracion.fichaImgFondo || '',
         fichaImgCancelado: configuracion.fichaImgCancelado || '',
-        fichaImgPendiente: configuracion.fichaImgPendiente || ''
+        fichaImgPendiente: configuracion.fichaImgPendiente || '',
+        // Datos bancarios editables
+        bancoNombre: val('cfg-banco-nombre', CONFIG_DEFECTO.bancoNombre),
+        bancoTelefono: val('cfg-banco-telefono', CONFIG_DEFECTO.bancoTelefono),
+        bancoRif: val('cfg-banco-rif', CONFIG_DEFECTO.bancoRif),
+        bancoTitular: val('cfg-banco-titular', CONFIG_DEFECTO.bancoTitular),
+        bancoCuenta: val('cfg-banco-cuenta', CONFIG_DEFECTO.bancoCuenta),
+        bancoNota: val('cfg-banco-nota', CONFIG_DEFECTO.bancoNota)
       };
 
       aplicarConfiguracion(cfg);
@@ -2602,7 +3031,14 @@
         fichaTexto: val('cfg-ficha-texto', configuracion.fichaTexto),
         fichaBorde: oscurecer(val('cfg-ficha-fondo', configuracion.fichaFondo), 0.7),
         fichaCancelado: val('cfg-ficha-cancelado', configuracion.fichaCancelado),
-        fichaPendiente: val('cfg-ficha-pendiente', configuracion.fichaPendiente)
+        fichaPendiente: val('cfg-ficha-pendiente', configuracion.fichaPendiente),
+        // Datos bancarios
+        bancoNombre: val('cfg-banco-nombre', configuracion.bancoNombre),
+        bancoTelefono: val('cfg-banco-telefono', configuracion.bancoTelefono),
+        bancoRif: val('cfg-banco-rif', configuracion.bancoRif),
+        bancoTitular: val('cfg-banco-titular', configuracion.bancoTitular),
+        bancoCuenta: val('cfg-banco-cuenta', configuracion.bancoCuenta),
+        bancoNota: val('cfg-banco-nota', configuracion.bancoNota)
       };
     }
 
