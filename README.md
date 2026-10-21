@@ -164,20 +164,51 @@ desde el recibo y desde el Historial por Cliente) que permite cambiar:
 - Los **meses** que cancela (selección individual).
 - El **comprobante** (reemplazarlo por otra imagen o quitarlo).
 
-## Notificaciones cuando alguien paga
+## Notificaciones cuando alguien paga (push real)
 
-- **Con la app abierta:** la junta recibe una alerta interna (aviso) al instante,
-  aunque el dispositivo esté en la pantalla del residente. Se activan una vez en
-  **Configuración → 🔔 Notificaciones de Pagos → Activar Notificaciones**.
-- **Con la app cerrada (segundo plano):** hace falta la mensajería push de Firebase.
-  Pasos:
-  1. **Firebase Console → ⚙️ Configuración del proyecto → Cloud Messaging → Web Push certificates → Generate key pair.**
-  2. Copia la **clave pública VAPID**.
-  3. En `index.html`, pega la clave en la constante `VAPID_PUBLIC_KEY` (busca esa línea).
-  4. Vuelve a publicar. Al pulsar "Activar Notificaciones", el dispositivo se registra.
-  5. Para **enviar** la notificación cuando entra un pago, se requiere una función
-     de servidor (Cloud Function) que detecte el nuevo documento `pagos` y envíe el
-     mensaje. Con la clave configurada, la app ya muestra avisos en primer plano.
+Ya está **completo**: los avisos llegan **también con la app cerrada**.
+
+### Cómo funciona
+
+1. **El dispositivo se suscribe.** Al pulsar *Configuración → 🔔 Notificaciones de Pagos →
+   Activar Notificaciones*, el navegador obtiene un token push de Firebase
+   (`getToken()`) y lo guarda en la colección `suscripciones` de Firestore.
+   No hace falta pegar una clave VAPID: el SDK usa el certificado web push del
+   propio proyecto.
+2. **Se avisa al crear un pago.** Al subir un pago a Firestore, la app hace un
+   `POST` a la función serverless `api/notificar` (Vercel).
+3. **El servidor envía el push.** `api/notificar.js` firma un JWT con una
+   **cuenta de servicio de Google**, lee `suscripciones` y `pagos` en Firestore y
+   envía el aviso por **FCM v1** a cada token. Guarda en `notificaciones_enviadas`
+   los pagos ya avisados para no repetirlos.
+4. **El aviso aparece.** `sw.js` (el único *service worker* registrado) escucha el
+   evento `push` y muestra la notificación del sistema, aunque la app esté
+   cerrada. Al tocarla, se abre la app.
+
+### Configurar el servidor (ya está hecho, esto es la guía)
+
+- Cuenta de servicio: `firebase-push@yeison-app-84d5d.iam.gserviceaccount.com`
+  con los roles `roles/cloudmessaging.editor` y `roles/datastore.user`.
+- Su clave privada se guarda **cifrada** en Vercel como variable de entorno
+  `FIREBASE_SERVICE_ACCOUNT_B64` (base64 del JSON de la cuenta de servicio).
+  **Nunca** se sube al repositorio.
+- La función está en `api/notificar.js` y se despliega sola con cada `git push`.
+
+### Probarlo
+
+- *Aviso en la App* → muestra el aviso dentro de la app (prueba rápida).
+- *Push Real (app cerrada)* → el servidor envía un push de verdad a todos los
+  dispositivos suscritos. Cierra la app antes de pulsarlo para comprobarlo.
+
+### Notas
+
+- La cuenta de servicio se puede borrar con
+  `gcloud iam service-accounts delete firebase-push@yeison-app-84d5d.iam.gserviceaccount.com`
+  y la variable de entorno con `vercel env rm FIREBASE_SERVICE_ACCOUNT_B64`.
+- Si se cambia de proyecto de Firebase, hay que rehacer la clave y la variable
+  de entorno, y actualizar `PROJECT_ID` en `api/notificar.js`.
+- Avisos por dispositivo: cada uno se suscribe por separado. Si un token deja de
+  servir, el servidor lo borra solo de `suscripciones`.
 
 ## Cómo publicarla (para que sea instalable desde Chrome)
 

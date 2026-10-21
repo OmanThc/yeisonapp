@@ -265,12 +265,19 @@ module.exports = async (req, res) => {
     }
 
     // 4) Pagos pendientes de aviso (los más antiguos se procesan primero)
+    //    - no deben llevar `eliminado`
+    //    - no se han avisado antes
+    //    - son posteriores a la marca de arranque
+    //    - son recientes (máx. 6 h) para no generar avalanchas de avisos
+    const ventanaMs = 6 * 60 * 60 * 1000;
+    const ahoraMs = Date.now();
     const pagos = (await listarDocumentos(token, 'pagos'))
       .map((d) => ({ id: d.name.split('/').pop(), campos: d.fields || {} }))
       .filter((p) => !valorCampo(p.campos.eliminado) && !yaAvisados.has(p.id))
       .filter((p) => {
         const ts = Number(String(p.id).replace(/^pago_/, ''));
-        return !Number.isFinite(ts) || ts >= desde;
+        if (!Number.isFinite(ts)) return true;
+        return ts >= desde && ts >= ahoraMs - ventanaMs;
       })
       .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
@@ -303,9 +310,10 @@ module.exports = async (req, res) => {
       };
 
       const resultados = await Promise.allSettled(tokens.map((t) => enviarPush(token, t, aviso)));
+      let entregados = 0;
       for (let i = 0; i < resultados.length; i++) {
         const resul = resultados[i];
-        if (resul.status === 'fulfilled') { enviados++; continue; }
+        if (resul.status === 'fulfilled') { enviados++; entregados++; continue; }
         fallos++;
         const err = resul.reason || {};
         const cuerpo = String(err.cuerpo || err.message || '');
@@ -315,9 +323,13 @@ module.exports = async (req, res) => {
         }
       }
 
-      await guardarDocumento(token, 'notificaciones_enviadas', pago.id, {
-        enviado: true, fecha: new Date().toISOString(), nombre, monto
-      });
+      // Solo se marca como avisado si el aviso llegó a algún dispositivo.
+      // Si falló todo, el pago queda pendiente y se reintenta más tarde.
+      if (entregados > 0) {
+        await guardarDocumento(token, 'notificaciones_enviadas', pago.id, {
+          enviado: true, fecha: new Date().toISOString(), nombre, monto
+        });
+      }
     }
 
     res.status(200).json({

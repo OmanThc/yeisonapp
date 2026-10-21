@@ -718,6 +718,7 @@
           <div id="cfg-estado-notif" class="p-3.5 rounded-2xl border text-slate-700 bg-slate-50 border-slate-200">
             Comprobando el estado de las notificaciones…
           </div>
+          <div id="cfg-dispositivos-notif" class="text-slate-500 text-[11px]">Comprobando dispositivos suscritos…</div>
           <div class="flex flex-wrap gap-2">
             <button type="button" onclick="activarNotificaciones()" class="px-4 py-2.5 text-white rounded-xl font-bold" style="background:#047857">🔔 Activar Notificaciones</button>
             <button type="button" onclick="probarNotificacion()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">🧪 Aviso en la App</button>
@@ -3313,6 +3314,22 @@
         box.className = 'p-3.5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900';
         box.innerHTML = '🔕 Notificaciones <b>desactivadas</b>. Pulsa "Activar Notificaciones" para recibir avisos de pagos.';
       }
+      mostrarDispositivosSuscritos();
+    }
+
+    // Muestra cuántos dispositivos están suscritos a los avisos push
+    function mostrarDispositivosSuscritos() {
+      if (!dbFirebase) return;
+      dbFirebase.collection('suscripciones').get()
+        .then(snap => {
+          const el = document.getElementById('cfg-dispositivos-notif');
+          if (!el) return;
+          const n = snap.size;
+          el.textContent = n
+            ? '📱 ' + n + ' dispositivo(s) suscrito(s) a los avisos push.'
+            : '📱 Ningún dispositivo suscrito todavía: abre la app en el teléfono y pulsa "Activar Notificaciones".';
+        })
+        .catch(() => {});
     }
 
     async function activarNotificaciones() {
