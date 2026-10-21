@@ -2,22 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Pagos reportados por los residentes (lectura y escritura abierta, uso interno de la junta)
     match /pagos/{pagoId} {
       allow read, write: if true;
     }
 
-    // Configuración de la página (nombre, colores, cuota) editable desde el Panel Admin
     match /configuracion/{docId} {
       allow read, write: if true;
     }
 
-    // Tokens de notificaciones (solo si se configura la clave VAPID)
     match /suscripciones/{docId} {
       allow read, write: if true;
     }
 
-    // Historial de fichas descargadas/compartidas por la junta
     match /fichas/{docId} {
       allow read, write: if true;
     }
