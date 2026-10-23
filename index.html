@@ -1109,7 +1109,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
-    const VERSION_APP = '1.5';   // súbela al publicar cambios para ver si tu app se actualizó
+    const VERSION_APP = '1.6';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -2303,7 +2303,13 @@
       if (unsubscribeSeguridad) { unsubscribeSeguridad(); unsubscribeSeguridad = null; }
       unsubscribeSeguridad = dbFirebase.collection('configuracion').doc('seguridad').onSnapshot(
         (doc) => {
-          if (!doc.exists) return;
+          if (!doc.exists) {
+            // Sin clave en la nube (nunca se ha cambiado o se borró):
+            // cada dispositivo sigue usando su PIN local.
+            pinHashNube = '';
+            pinSalNube = '';
+            return;
+          }
           aplicarSeguridadNube(doc.data() || {});
         },
         () => { /* sin permisos: se sigue usando el PIN local */ }
