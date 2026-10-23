@@ -812,6 +812,9 @@
           <input type="password" id="pin-confirmar" required placeholder="Repite la nueva contraseña" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm">
         </div>
         <p id="msg-error-cambio-pin" class="hidden text-rose-600 text-xs font-semibold"></p>
+        <div class="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-900 text-[11px]">
+          🔄 Al guardar, la nueva clave se aplica <b>también en los demás teléfonos y equipos</b> que tengan la app abierta.
+        </div>
         <div class="flex gap-2 pt-2">
           <button type="button" onclick="cerrarModalCambiarPin()" class="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">Cancelar</button>
           <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">Guardar</button>
@@ -1083,6 +1086,12 @@
     // Estado en ejecución
     let listaPagos = [];
     let adminPin = '123456';
+    // Clave del administrador vigente en la nube (hash SHA-256 con sal).
+    // Antes la clave vivía SOLO en el localStorage de cada dispositivo, así
+    // que al cambiarla en uno los demás seguían usando la anterior.
+    let pinHashNube = '';
+    let pinSalNube = '';
+    let unsubscribeSeguridad = null;
     let isAdminAutenticado = false;
     let pestanaActual = 'reportar';
     let anoSeleccionadoReporte = ANO_ACTUAL;
@@ -1100,7 +1109,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
-    const VERSION_APP = '1.4';   // súbela al publicar cambios para ver si tu app se actualizó
+    const VERSION_APP = '1.5';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -1340,6 +1349,10 @@
 
       // Conectar al servidor (Firebase) antes de cargar datos
       initFirebase();
+
+      // La clave del administrador se sincroniza en vivo entre dispositivos
+      escucharSeguridad();
+      cargarPinNube();
 
       // Si este dispositivo ya tenía las notificaciones activadas, se renueva
       // el token push (por si el navegador lo cambió o es un equipo nuevo).
@@ -2239,6 +2252,96 @@
       document.getElementById('modal-ver-recibo').classList.add('hidden');
     }
 
+    // ==============================================================
+    // CLAVE DEL ADMINISTRADOR SINCRONIZADA ENTRE DISPOSITIVOS
+    // El PIN vigente se guarda en `configuracion/seguridad` como hash
+    // SHA-256 con sal, y todos los dispositivos abiertos lo reciben en
+    // vivo. Si un dispositivo está sin conexión, usa el PIN local como
+    // respaldo para no quedarse fuera del panel.
+    // ==============================================================
+    function bytesAHex(buf) {
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function hashPin(pin, sal) {
+      if (!(window.crypto && crypto.subtle)) return '';   // sin HTTPS no hay hash
+      const enc = new TextEncoder();
+      // PBKDF2 (no un SHA simple): aunque alguien lea el hash en la nube, no
+      // puede sacar la clave probando combinaciones de forma instantánea.
+      const material = await crypto.subtle.importKey(
+        'raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']
+      );
+      const bits = await crypto.subtle.deriveBits({
+        name: 'PBKDF2',
+        salt: enc.encode(String(sal)),
+        iterations: 150000,
+        hash: 'SHA-256'
+      }, material, 256);
+      return bytesAHex(bits);
+    }
+
+    // ¿La clave introducida es la correcta? Se compara con el hash de la nube
+    // y, si aún no se ha cargado (o no hay nube), con el PIN local.
+    async function pinCoincide(ingresado) {
+      const pin = String(ingresado || '').trim();
+      if (pinHashNube) {
+        const h = await hashPin(pin, pinSalNube);
+        if (h) return h === pinHashNube;
+      }
+      return pin === adminPin;
+    }
+
+    function aplicarSeguridadNube(datos) {
+      if (!datos) return;
+      pinHashNube = String(datos.pin_hash || '');
+      pinSalNube = String(datos.sal || '');
+    }
+
+    // Escucha en vivo la clave: si otro dispositivo la cambia, este se entera
+    function escucharSeguridad() {
+      if (!dbFirebase) return;
+      if (unsubscribeSeguridad) { unsubscribeSeguridad(); unsubscribeSeguridad = null; }
+      unsubscribeSeguridad = dbFirebase.collection('configuracion').doc('seguridad').onSnapshot(
+        (doc) => {
+          if (!doc.exists) return;
+          aplicarSeguridadNube(doc.data() || {});
+        },
+        () => { /* sin permisos: se sigue usando el PIN local */ }
+      );
+    }
+
+    async function guardarSeguridadNube(pin) {
+      if (!dbFirebase) return false;
+      try {
+        const sal = bytesAHex(crypto.getRandomValues(new Uint8Array(16)));
+        const pin_hash = await hashPin(pin, sal);
+        if (!pin_hash) return false;
+        await dbFirebase.collection('configuracion').doc('seguridad').set({
+          pin_hash,
+          sal,
+          actualizado: new Date().toISOString()
+        }, { merge: true });
+        pinHashNube = pin_hash;
+        pinSalNube = sal;
+        return true;
+      } catch (e) {
+        console.warn('No se pudo guardar la clave en la nube:', e.message);
+        return false;
+      }
+    }
+
+    // Carga la clave vigente de la nube. No se publica nada automáticamente:
+    // si cada dispositivo tuviera una clave distinta, publicar al azar podría
+    // dejar a la junta sin acceso. La nube manda en cuanto exista una clave
+    // cambiada desde la app (a partir de ahí todos los equipos la reciben).
+    async function cargarPinNube() {
+      if (!dbFirebase) return;
+      try {
+        const doc = await dbFirebase.collection('configuracion').doc('seguridad').get();
+        if (doc.exists) aplicarSeguridadNube(doc.data() || {});
+      } catch (e) { /* sin permisos: queda solo el PIN local */ }
+    }
+
     // Modal de PIN y Autenticación
     function abrirModalPin() {
       document.getElementById('modal-pin').classList.remove('hidden');
@@ -2261,9 +2364,9 @@
       document.getElementById('input-pin-acceso').value = '';
     }
 
-    function validarPin() {
+    async function validarPin() {
       const pin = document.getElementById('input-pin-acceso').value.trim();
-      if (pin === adminPin) {
+      if (await pinCoincide(pin)) {
         isAdminAutenticado = true;
         sessionStorage.setItem('admin_session', 'true');
         cerrarModalPin();
@@ -2299,14 +2402,14 @@
       document.getElementById('modal-cambiar-pin').classList.add('hidden');
     }
 
-    function guardarNuevaContrasena(e) {
+    async function guardarNuevaContrasena(e) {
       e.preventDefault();
       const actual = document.getElementById('pin-actual').value.trim();
       const nuevo = document.getElementById('pin-nuevo').value.trim();
       const conf = document.getElementById('pin-confirmar').value.trim();
       const err = document.getElementById('msg-error-cambio-pin');
 
-      if (actual !== adminPin) {
+      if (!(await pinCoincide(actual))) {
         err.textContent = 'La contraseña actual no es correcta.';
         err.classList.remove('hidden');
         return;
@@ -2322,10 +2425,25 @@
         return;
       }
 
+      // 1) Se guarda en este dispositivo (respaldo sin conexión)
       adminPin = nuevo;
       localStorage.setItem(STORAGE_KEY_PIN, nuevo);
+
+      // 2) Se publica el hash en la nube para que TODOS los dispositivos
+      //    abiertos reciban la clave nueva al instante.
+      const publicado = await guardarSeguridadNube(nuevo);
+      await registrarDiagnosticoNotif('clave_cambiada', {
+        publicado,
+        dispositivos: publicado ? 'sincronizada' : 'solo local'
+      });
+
       cerrarModalCambiarPin();
-      mostrarToast('Contraseña de administrador actualizada', '🔑');
+      mostrarToast(
+        publicado
+          ? 'Contraseña actualizada y sincronizada en todos los dispositivos'
+          : 'Contraseña actualizada en este dispositivo (sin conexión a la nube)',
+        '🔑'
+      );
     }
 
     // Modales de Bancos y Registro Manual
