@@ -1109,7 +1109,7 @@
     // Los pagos viven en la nube: todos los dispositivos ven lo mismo.
     // Si la nube no está disponible, la app sigue en modo local.
     // ==============================================================
-    const VERSION_APP = '1.6';   // súbela al publicar cambios para ver si tu app se actualizó
+    const VERSION_APP = '1.7';   // súbela al publicar cambios para ver si tu app se actualizó
     let dbFirebase = null;
     let nubeDisponible = false;
     let primeraSyncNubeHecha = false;
@@ -2286,7 +2286,16 @@
       const pin = String(ingresado || '').trim();
       if (pinHashNube) {
         const h = await hashPin(pin, pinSalNube);
-        if (h) return h === pinHashNube;
+        if (h) {
+          if (h === pinHashNube) {
+            // Se recuerda la clave correcta en este dispositivo para poder
+            // entrar también sin conexión.
+            adminPin = pin;
+            try { localStorage.setItem(STORAGE_KEY_PIN, pin); } catch (e) { /* modo privado */ }
+            return true;
+          }
+          return false;
+        }
       }
       return pin === adminPin;
     }
