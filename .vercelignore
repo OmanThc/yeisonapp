@@ -1,0 +1,7 @@
+# Archivos internos que NO deben publicarse en el sitio
+firestore.rules
+database.rules.json
+firebase.json
+.firebaserc
+README.md
+AUTOMATIZACION.md
