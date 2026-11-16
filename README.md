@@ -96,6 +96,27 @@ Si la base fue creada en **modo de prueba (test mode)**, las escrituras dejan
 de funcionar a los **30 días**. Publica las reglas de arriba antes de esa fecha.
 Las reglas ya están publicadas (verificado el 21/10/2026).
 
+### Realtime Database: cerrada de forma permanente
+La app **no usa Realtime Database** (solo Firestore). La instancia
+`yeison-app-84d5d-default-rtdb` existía con las reglas de "modo de prueba", que
+Firebase desactiva a los 30 días y que generan los correos de aviso. Se publicaron
+reglas **deny-all permanentes** (`database.rules.json`), sin fecha de caducidad:
+
+```json
+{ "rules": { ".read": false, ".write": false } }
+```
+
+Se despliegan con:
+
+```bash
+firebase deploy --only database --project yeison-app-84d5d
+```
+
+Verificado: una lectura/escritura anónima a
+`https://yeison-app-84d5d-default-rtdb.firebaseio.com/.json` devuelve
+`401 Permission denied`. Si en el futuro la app necesitara RTDB, hay que abrir
+solo las rutas necesarias en `database.rules.json` (nunca `.read/.write: true`).
+
 ## Sincronización en tiempo real (entre dispositivos)
 
 La app **escucha** Firestore en vivo (`onSnapshot`) en las 3 colecciones, así que
